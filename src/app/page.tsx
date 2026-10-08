@@ -1,69 +1,158 @@
-import Image from "next/image";
+'use client';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Apodo } from '@/components/Apodo';
+import { Carta } from '@/components/Carta';
+import { api, sb } from '@/lib/supabase/browser';
+import { useSession } from '@/lib/useSession';
+
+interface Stats {
+  played: number;
+  won: number;
+  points_for: number;
+}
 
 export default function Home() {
+  const { session, error, saveNickname } = useSession();
+  const router = useRouter();
+  const [players, setPlayers] = useState<2 | 4>(2);
+  const [target, setTarget] = useState<15 | 30>(30);
+  const [flor, setFlor] = useState(false);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!session?.nickname) return;
+    sb()
+      .from('leaderboard')
+      .select('played,won,points_for')
+      .eq('user_id', session.userId)
+      .maybeSingle()
+      .then(({ data }) => setStats(data as Stats | null));
+  }, [session]);
+
+  async function crear() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const { code } = await api<{ code: string }>('/api/rooms', { players, target, flor });
+      router.push(`/sala/${code}`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'No se pudo crear la sala');
+      setBusy(false);
+    }
+  }
+
+  function unirme(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = code.trim().toUpperCase();
+    if (clean.length >= 4) router.push(`/sala/${clean}`);
+  }
+
+  const option = (active: boolean) =>
+    `rounded-xl px-4 py-2 font-semibold transition ${active ? 'bg-claro text-pano-osc' : 'bg-pano-osc/60 text-claro/80'}`;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-4 py-10">
+      <header className="flex items-end justify-between gap-6">
+        <div>
+          <h1 className="font-mano text-7xl font-bold leading-none tracking-tight sm:text-8xl">Truco</h1>
+          <p className="mt-2 max-w-sm text-lg text-claro/85">
+            Armá una mesa, pasale el link a los tuyos y jugá de a dos o de a cuatro.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="hidden shrink-0 sm:flex" aria-hidden>
+          <span className="-mr-6 rotate-[-12deg]"><Carta id="1e" size="lg" /></span>
+          <span className="-mr-6 translate-y-2"><Carta id="1b" size="lg" /></span>
+          <span className="rotate-[12deg] translate-y-6"><Carta id="7e" size="lg" /></span>
         </div>
-      </main>
-    </div>
+      </header>
+
+      {error && <p className="rounded-xl bg-rojo/80 p-4">No pudimos conectarte: {error}</p>}
+      {!session && !error && <p className="text-claro/70">Preparando la mesa…</p>}
+
+      {session && (!session.nickname || editing) && (
+        <section className="rounded-3xl bg-pano-osc/60 p-6">
+          <Apodo
+            initial={session.nickname ?? ''}
+            onSave={async (n) => {
+              await saveNickname(n);
+              setEditing(false);
+            }}
+          />
+        </section>
+      )}
+
+      {session?.nickname && !editing && (
+        <>
+          <p className="text-lg">
+            Jugás como <strong>{session.nickname}</strong>.{' '}
+            <button onClick={() => setEditing(true)} className="underline decoration-claro/40 underline-offset-4">
+              Cambiar apodo
+            </button>
+            {stats && (
+              <span className="block text-base text-claro/75">
+                {stats.played} partidas, {stats.won} ganadas, {stats.points_for} puntos hechos.
+              </span>
+            )}
+          </p>
+
+          <section className="grid gap-6 sm:grid-cols-[1.3fr_1fr]">
+            <div className="flex flex-col gap-4 rounded-3xl bg-pano-osc/60 p-6">
+              <h2 className="text-2xl font-bold">Armar una mesa</h2>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-2 text-claro/80">Jugadores</legend>
+                <div className="flex gap-2">
+                  <button type="button" aria-pressed={players === 2} className={option(players === 2)} onClick={() => setPlayers(2)}>Mano a mano</button>
+                  <button type="button" aria-pressed={players === 4} className={option(players === 4)} onClick={() => setPlayers(4)}>Dos contra dos</button>
+                </div>
+              </fieldset>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-2 text-claro/80">Puntos</legend>
+                <div className="flex gap-2">
+                  <button type="button" aria-pressed={target === 15} className={option(target === 15)} onClick={() => setTarget(15)}>A 15</button>
+                  <button type="button" aria-pressed={target === 30} className={option(target === 30)} onClick={() => setTarget(30)}>A 30</button>
+                </div>
+              </fieldset>
+              <label className="flex items-center gap-3 text-lg">
+                <input type="checkbox" checked={flor} onChange={(e) => setFlor(e.target.checked)} className="h-5 w-5 accent-oro" />
+                Se juega con flor
+              </label>
+              <button
+                onClick={crear}
+                disabled={busy}
+                className="mt-2 rounded-2xl bg-rojo px-6 py-3 text-xl font-bold shadow-[0_4px_0_rgba(0,0,0,.4)] active:translate-y-1 active:shadow-none disabled:opacity-60"
+              >
+                {busy ? 'Armando…' : 'Crear sala'}
+              </button>
+              {msg && <p className="text-[#ffb4a8]">{msg}</p>}
+            </div>
+
+            <div className="flex flex-col gap-6">
+              <form onSubmit={unirme} className="flex flex-col gap-3 rounded-3xl bg-pano-osc/60 p-6">
+                <h2 className="text-2xl font-bold">Tengo un código</h2>
+                <label htmlFor="codigo" className="sr-only">Código de sala</label>
+                <input
+                  id="codigo"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="AB12CD"
+                  maxLength={6}
+                  className="rounded-xl bg-claro px-4 py-2.5 text-center font-mano text-2xl uppercase tracking-[0.2em] text-tinta placeholder:text-tinta/40"
+                />
+                <button className="rounded-xl bg-oro px-4 py-2.5 text-lg font-bold text-tinta">Entrar a la sala</button>
+              </form>
+              <Link href="/ranking" className="rounded-3xl bg-papel p-6 font-mano text-2xl font-bold text-tinta shadow-[2px_4px_0_rgba(0,0,0,.35)] rotate-[1deg]">
+                Ver el ranking
+              </Link>
+            </div>
+          </section>
+        </>
+      )}
+    </main>
   );
 }
