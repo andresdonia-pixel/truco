@@ -8,6 +8,8 @@ import { applyAction, createGame, legalActions, viewFor } from '@/engine/engine.
 import type { Action, Config, GameState } from '@/engine/engine.ts';
 import { Anotador } from '@/components/Anotador';
 import { Mesa, type Jugador } from '@/components/Mesa';
+import { Toast, type ToastData } from '@/components/Toast';
+import { prepararSonido, recibirZumbido } from '@/lib/zumbido';
 import { Avatar } from '@/components/Avatar';
 import { BOT_AVATARS, loadLocalAvatar } from '@/lib/avatar';
 import type { AvatarConfig } from '@/lib/avatar';
@@ -36,6 +38,7 @@ export default function Maquina() {
   const [state, setState] = useState<GameState | null>(null);
   const [myAvatar, setMyAvatar] = useState<AvatarConfig | null>(null);
   useEffect(() => setMyAvatar(loadLocalAvatar()), []);
+  const [toast, setToast] = useState<ToastData | null>(null);
   const [thinking, setThinking] = useState(false);
 
   const actor = state ? nextActor(state) : null;
@@ -55,6 +58,18 @@ export default function Maquina() {
     return () => clearTimeout(t);
   }, [state, actor]);
 
+  // si tardás mucho en jugar, un rival te manda un zumbido (uno por decisión)
+  useEffect(() => {
+    if (!state || actor !== HUMAN || state.winner !== null) return;
+    const t = setTimeout(() => {
+      recibirZumbido();
+      const id = Date.now();
+      setToast({ id, text: '¡El Mago te mandó un zumbido! Dale que se enfría el mate.', avatar: BOT_AVATARS[1], fuerte: true });
+      setTimeout(() => setToast((cur) => (cur?.id === id ? null : cur)), 3500);
+    }, 25_000);
+    return () => clearTimeout(t);
+  }, [state, actor]);
+
   const view = useMemo(() => (state ? viewFor(state, HUMAN) : null), [state]);
   const players: Jugador[] = useMemo(
     () =>
@@ -68,12 +83,14 @@ export default function Maquina() {
   );
 
   function empezar() {
+    prepararSonido();
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     setState(createGame(config, seed));
   }
 
   function jugar(a: Action) {
     if (!state || actor !== HUMAN) return;
+    prepararSonido();
     setState(applyAction(state, HUMAN, a));
   }
 
@@ -141,6 +158,7 @@ export default function Maquina() {
 
   return (
     <main className="mx-auto grid w-full max-w-7xl flex-1 gap-5 px-3 py-4 lg:grid-cols-[200px_1fr_200px] lg:px-6">
+      <Toast toast={toast} />
       <header className="flex flex-wrap items-center justify-between gap-3 lg:col-span-3">
         <Link href="/" className="font-mano text-3xl font-bold">Truco</Link>
         <span className="rounded-full bg-pano-osc/70 px-3 py-1 text-sm">

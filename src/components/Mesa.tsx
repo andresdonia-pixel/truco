@@ -18,6 +18,9 @@ interface Props {
   players: Jugador[];
   busy: boolean;
   onAction: (a: Action) => void;
+  /** Si viene, aparece el botón de zumbido para apurar al que tiene que jugar. */
+  onZumbido?: (targets: number[]) => void;
+  zumbidoListo?: boolean;
 }
 
 interface TableBaza {
@@ -68,7 +71,7 @@ const BUTTON: Record<string, string> = {
 
 const BAZA_NAME = ['Primera', 'Segunda', 'Tercera'];
 
-export function Mesa({ view, players, busy, onAction }: Props) {
+export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = true }: Props) {
   const h = view.hand;
   const n = view.config.players;
   const nameOf = (seat: number) => players.find((p) => p.seat === seat)?.nickname ?? `Asiento ${seat + 1}`;
@@ -80,6 +83,17 @@ export function Mesa({ view, players, busy, onAction }: Props) {
   const others = view.legal.filter((a) => a.type !== 'play');
   const myTurnToAnswer = pending && pending.by !== view.team && others.length > 0;
   const waitingAnswer = pending && pending.by === view.team;
+  // a quién estamos esperando (para el zumbido)
+  const waitingFor: number[] =
+    view.winner !== null
+      ? []
+      : pending
+        ? pending.by === view.team
+          ? Array.from({ length: n }, (_, s) => s).filter((s) => s % 2 !== view.team)
+          : []
+        : h.turn !== view.seat
+          ? [h.turn]
+          : [];
 
   // en la mesa: las bazas de esta mano; si todavía no se jugó nada, cómo quedó la anterior
   const anyPlayed = h.bazas.some((b) => b.plays.length > 0);
@@ -257,10 +271,25 @@ export function Mesa({ view, players, busy, onAction }: Props) {
           </span>
         </div>
       )}
-      {waitingAnswer && (
-        <p className="text-center text-sm text-claro/80" role="status">
-          Esperando la respuesta de {teamName((1 - view.team) as Team)}…
-        </p>
+      {waitingFor.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-claro/80" role="status">
+          <span>
+            {waitingAnswer
+              ? `Esperando la respuesta de ${teamName((1 - view.team) as Team)}…`
+              : `Esperando a ${nameOf(waitingFor[0])}…`}
+          </span>
+          {onZumbido && (
+            <button
+              type="button"
+              onClick={() => onZumbido(waitingFor)}
+              disabled={!zumbidoListo}
+              title={zumbidoListo ? 'Mandale un zumbido para que juegue' : 'Esperá un ratito para mandar otro'}
+              className="rounded-full border-2 border-oro px-3 py-0.5 font-bold text-oro transition hover:bg-oro hover:text-tinta disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-oro"
+            >
+              Zumbido
+            </button>
+          )}
+        </div>
       )}
 
       {/* mi mano */}

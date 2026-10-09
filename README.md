@@ -15,6 +15,7 @@ Truco argentino multijugador (1v1, 2v2 y 3v3) en tiempo real, con chat general y
 - [x] Truco de a 6 (3 contra 3), envido por equipo (sin pica-pica). Base existente: correr `supabase/migrations_002_truco_de_6.sql`
 - [x] Mesa con las cartas jugadas delante de cada jugador; la mano anterior queda visible hasta la primera carta nueva
 - [x] Personajes: cara, piel, pelo, barba, ojos, labios y fondo, dibujados en SVG propio (`src/components/Avatar.tsx`); abren la boca cuando cantan. Base existente: correr `supabase/migrations_003_avatar.sql`
+- [x] Zumbido estilo MSN para apurar al que tiene que jugar (Realtime broadcast, sin tocar la base): sacude la pantalla, suena y vibra. Contra la máquina, El Mago te zumba si tardás
 
 ## Correr local
 

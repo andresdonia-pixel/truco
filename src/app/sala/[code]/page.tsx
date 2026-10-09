@@ -11,6 +11,9 @@ import { Mesa, type Jugador } from '@/components/Mesa';
 import { api, sb } from '@/lib/supabase/browser';
 import { useSession } from '@/lib/useSession';
 import { sanitizeAvatar } from '@/lib/avatar';
+import { Toast } from '@/components/Toast';
+import { useZumbido } from '@/lib/useZumbido';
+import { prepararSonido } from '@/lib/zumbido';
 
 interface Room {
   id: string;
@@ -99,7 +102,11 @@ export default function Sala() {
     if (room?.status === 'playing' && session && room.id) loadView(room.id, session.userId);
   }, [room?.status, room?.id, session, loadView]);
 
+  const mySeat = session ? (players.find((p) => p.user_id === session.userId)?.seat ?? null) : null;
+  const zumbido = useZumbido(room?.id, mySeat, players);
+
   async function call(path: string, body: unknown = {}) {
+    prepararSonido();
     setBusy(true);
     setMsg(null);
     try {
@@ -251,6 +258,7 @@ export default function Sala() {
 
   return (
     <main className="mx-auto grid w-full max-w-7xl flex-1 gap-5 px-3 py-4 lg:grid-cols-[230px_1fr_300px] lg:px-6">
+      <Toast toast={zumbido.toast} />
       <div className="lg:col-span-3">{header}</div>
 
       <aside className="order-2 flex flex-col gap-4 lg:order-1">
@@ -278,7 +286,7 @@ export default function Sala() {
             <Link href="/ranking" className="underline">Ver el ranking</Link>
           </div>
         ) : (
-          <Mesa view={view} players={players} busy={busy} onAction={act} />
+          <Mesa view={view} players={players} busy={busy} onAction={act} onZumbido={zumbido.mandar} zumbidoListo={zumbido.listo} />
         )}
         {msg && <p className="text-center text-[#ffb4a8]" role="alert">{msg}</p>}
       </section>
