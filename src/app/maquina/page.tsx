@@ -147,7 +147,10 @@ export default function Maquina() {
         <Link href="/" className="font-mano text-3xl font-bold">Truco</Link>
         <section className="flex flex-col gap-4 rounded-3xl bg-pano-osc/60 p-6">
           <h1 className="text-3xl font-bold">Contra la máquina</h1>
-          <p className="text-claro/80">Para practicar sin esperar a nadie. Estas partidas no suman al ranking.</p>
+          <p className="text-claro/80">
+            Para practicar sin esperar a nadie. Estas partidas no suman al ranking. ¿Primera vez?{' '}
+            <Link href="/como-jugar" className="underline underline-offset-4">Mirá cómo se juega</Link>.
+          </p>
           <div className="flex items-center gap-4 rounded-2xl bg-pano-osc/50 p-3">
             <Avatar avatar={myAvatar ?? BOT_AVATARS[0]} size={56} title="Tu personaje" />
             <span className="text-2xl font-bold text-claro/60" aria-hidden>vs</span>
@@ -209,6 +212,7 @@ export default function Maquina() {
           Contra {rivals}, a {config.target}
           {config.flor ? ', con flor' : ''}
         </span>
+        <Link href="/como-jugar" target="_blank" className="rounded-full bg-pano-osc/70 px-3 py-1 text-sm">Reglas</Link>
         <SonidoToggle />
       </header>
 

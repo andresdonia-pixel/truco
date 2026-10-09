@@ -8,7 +8,8 @@ import type { AvatarConfig } from '@/lib/avatar';
 import { SENAS } from '@/lib/social';
 import type { Gesto } from '@/lib/social';
 import { Frases, Senas } from './Social';
-import { actionLabel, callText, eventText, pendingText } from '@/lib/labels';
+import { actionHelp, actionLabel, callText, eventText, pendingText } from '@/lib/labels';
+import { envidoPoints, hasFlor } from '@/engine/cards.ts';
 
 export interface Jugador {
   seat: number;
@@ -143,6 +144,15 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
     .slice(-5) as string[];
 
   const seats = Array.from({ length: n }, (_, i) => i);
+
+  // ayuda para quien aprende: tus puntos de envido mientras se puede cantar
+  const miTanto = useMemo(() => {
+    if (h.bazas.length !== 1 || view.winner !== null) return null;
+    const jugadas = h.bazas.flatMap((b) => b.plays.filter((p) => p.seat === view.seat).map((p) => p.card));
+    const mano = [...h.myCards, ...jugadas];
+    if (mano.length !== 3) return null;
+    return { envido: envidoPoints(mano), flor: view.config.flor && hasFlor(mano) };
+  }, [h.bazas, h.myCards, view.seat, view.winner, view.config.flor]);
 
   // sonidos de lo que pasó desde el último render
   const visto = useRef<{ hand: number; count: number } | null>(null);
@@ -297,9 +307,16 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
 
       {/* canto pendiente */}
       {myTurnToAnswer && (
-        <div className="canto mx-auto rounded-2xl bg-claro px-4 py-2 text-center text-tinta" role="status">
+        <div className="canto mx-auto max-w-md rounded-2xl bg-claro px-4 py-2 text-center text-tinta" role="status">
           <span className="font-mano text-xl font-bold">
             {nameOf(pending.seat)}: {pendingText(pending)}
+          </span>
+          <span className="block text-sm">
+            {pending.kind === 'truco'
+              ? `Si querés, la mano vale ${pending.level}. Si no, ${nameOf(pending.seat)} se lleva ${pending.level - 1}.`
+              : pending.kind === 'envido'
+                ? 'Si querés, se comparan los envidos. Si no, ellos suman lo cantado antes.'
+                : 'Tu rival cantó flor: respondé con la tuya.'}
           </span>
         </div>
       )}
@@ -351,6 +368,12 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
             {isTurn(view.seat) ? 'Te toca' : nameOf(view.seat)}
           </span>
           {h.mano === view.seat && <span className="text-xs text-claro/80">sos mano</span>}
+          {miTanto && (
+            <span className="rounded-full bg-pano-osc/70 px-2.5 py-0.5 text-xs" title="Durante la primera baza te mostramos tus puntos de envido">
+              Tu envido: <strong>{miTanto.envido}</strong>
+              {miTanto.flor && <strong className="text-oro"> · ¡Tenés flor!</strong>}
+            </span>
+          )}
           {bubbles[view.seat] && (
             <span key={bubbles[view.seat]} className="canto rounded-xl bg-claro px-2.5 py-0.5 font-mano font-bold text-tinta">
               {bubbles[view.seat]}
@@ -372,6 +395,7 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
           {others.map((a) => (
             <button
               key={JSON.stringify(a)}
+              title={actionHelp(a, view)}
               type="button"
               disabled={busy}
               onClick={() => onAction(a)}

@@ -68,6 +68,9 @@ export default function Home() {
           <p className="mt-2 max-w-sm text-lg text-claro/85">
             Armá una mesa, pasale el link a los tuyos y jugá de a dos, de a cuatro o de a seis.
           </p>
+          <Link href="/como-jugar" className="mt-3 inline-block rounded-full border-2 border-claro/40 px-4 py-1.5 font-semibold hover:border-claro">
+            ¿No sabés jugar? Aprendé en 5 minutos
+          </Link>
         </div>
         <div className="hidden shrink-0 sm:flex" aria-hidden>
           <span className="-mr-6 rotate-[-12deg]"><Carta id="1e" size="lg" /></span>

@@ -188,6 +188,7 @@ export default function Sala() {
           </Link>
         )}
         <span className="rounded-full bg-pano-osc/70 px-3 py-1 font-mano text-base tracking-widest">{room.code}</span>
+        <Link href="/como-jugar" target="_blank" className="rounded-full bg-pano-osc/70 px-3 py-1 text-sm">Reglas</Link>
         <SonidoToggle />
       </div>
     </header>

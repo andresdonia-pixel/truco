@@ -20,6 +20,7 @@ Truco argentino multijugador (1v1, 2v2 y 3v3) en tiempo real, con chat general y
 - [x] Sonidos de mesa sintetizados con Web Audio (carta, barajar, canto, victoria) y botón de silencio
 - [x] Frases rápidas: globitos sobre el personaje; la máquina también comenta la partida
 - [x] Señas del truco en el personaje. Viajan por el canal de equipo (RLS), así que los rivales nunca las reciben. El compañero máquina hace señas al repartir
+- [x] Cómo se juega (`/como-jugar`): reglas para quien nunca jugó, con las cartas dibujadas. En la mesa: tu envido calculado, explicación de cada canto y acceso a las reglas
 - [x] Torneos de 4 u 8, mano a mano, con llaves y salas automáticas. Base existente: correr `supabase/migrations_004_torneos.sql`
 
 ## Correr local

@@ -85,3 +85,36 @@ export function eventText(e: GameEvent, name: (seat: number) => string, teamName
       return null;
   }
 }
+
+/** Explicación corta de cada canto, para quien está aprendiendo. */
+export function actionHelp(a: Action, v: PlayerView): string {
+  const p = v.hand.pending;
+  switch (a.type) {
+    case 'truco': {
+      const level = p?.kind === 'truco' ? p.level + 1 : v.hand.trucoValue + 1;
+      return `Si te quieren, la mano pasa a valer ${level} puntos. Si no te quieren, te llevás ${level - 1}.`;
+    }
+    case 'envido':
+      return a.call === 'envido'
+        ? 'Apostás 2 puntos a que tenés más envido. Si no te quieren, ganás 1.'
+        : a.call === 'real'
+          ? 'Apostás 3 puntos a que tenés más envido. Si no te quieren, ganás 1.'
+          : 'Te jugás lo que le falta al que va ganando. En las malas, puede definir el partido.';
+    case 'flor':
+      return 'Tenés las tres cartas del mismo palo: cantala y sumás 3 puntos.';
+    case 'quiero':
+      return p?.kind === 'envido' ? 'Aceptás: se comparan los envidos y el mejor se lleva los puntos.' : 'Aceptás: se sigue jugando y la mano vale lo cantado.';
+    case 'no_quiero':
+      return p?.kind === 'envido' ? 'No aceptás: el rival se lleva lo que valía antes del último canto.' : 'No aceptás: la mano termina y el rival se lleva lo que valía antes.';
+    case 'achico':
+      return 'Reconocés su flor: le das 4 puntos sin comparar.';
+    case 'contraflor':
+      return 'Comparan las flores: la mejor se lleva 6 puntos.';
+    case 'contraflor_resto':
+      return 'Comparan las flores y se juega la falta.';
+    case 'mazo':
+      return 'Abandonás la mano: el rival se lleva lo que valía.';
+    case 'play':
+      return '';
+  }
+}
