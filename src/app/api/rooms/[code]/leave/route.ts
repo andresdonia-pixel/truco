@@ -8,6 +8,7 @@ export const POST = handle(async (req: Request, ctx: RouteContext<'/api/rooms/[c
   const db = admin();
   const room = await getRoom(db, code);
   if (room.status === 'playing') throw new HttpError(409, 'No podés levantarte en medio de una partida.');
+  if (room.tournament_id) throw new HttpError(409, 'Es un partido de torneo: no te podés levantar.');
   await db.from('room_players').delete().eq('room_id', room.id).eq('user_id', uid);
   const rest = await getSeats(db, room.id);
   if (rest.length === 0) await db.from('rooms').update({ status: 'abandoned' }).eq('id', room.id);

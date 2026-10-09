@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { AVATAR_OPTIONS, sanitizeAvatar } from '@/lib/avatar';
 import type { AvatarConfig } from '@/lib/avatar';
+import type { Gesto } from '@/lib/social';
 
 const INK = '#1f1b16';
 const SHIRT = '#26323a';
@@ -10,18 +11,29 @@ interface Props {
   size?: number;
   /** Abre la boca, como cuando canta truco. */
   shouting?: boolean;
+  /** Seña del truco que está haciendo (sólo la ve el compañero). */
+  gesto?: Gesto | null;
   title?: string;
   className?: string;
 }
 
 /** Personaje dibujado en SVG, todo con formas propias. */
-export function Avatar({ avatar, size = 40, shouting, title, className }: Props) {
+export function Avatar({ avatar, size = 40, shouting, gesto, title, className }: Props) {
   const a = sanitizeAvatar(avatar);
   const clip = useId();
   const skin = AVATAR_OPTIONS.piel[a.piel];
   const hair = AVATAR_OPTIONS.colorPelo[a.colorPelo];
   const bg = AVATAR_OPTIONS.fondo[a.fondo];
-  const mouth = shouting ? 'grito' : a.labios;
+  const GESTO_BOCA: Partial<Record<Gesto, MouthStyle>> = {
+    boca_der: 'der',
+    boca_izq: 'izq',
+    labio: 'labio',
+    trompa: 'trompa',
+    boca_abierta: 'grito',
+    cachetes: 'cerrada',
+  };
+  const mouth: MouthStyle = shouting ? 'grito' : (gesto && GESTO_BOCA[gesto]) || a.labios;
+  const eyes: EyeStyle = gesto === 'guino' ? 'guino' : gesto === 'ojos_cerrados' ? 'cerrados' : gesto === 'cejas' && a.ojos === 'sospecha' ? 'normales' : a.ojos;
 
   return (
     <svg
@@ -51,7 +63,13 @@ export function Avatar({ avatar, size = 40, shouting, title, className }: Props)
         <Face shape={a.cara} skin={skin} />
         <Beard style={a.barba} color={hair} />
         <path d="M50 46 Q47.5 53 51 54" fill="none" stroke="#000" strokeOpacity="0.25" strokeWidth="1.8" strokeLinecap="round" />
-        <Eyes style={a.ojos} sclera={a.piel === 'p5' || a.piel === 'p6'} />
+        {gesto === 'cachetes' && (
+          <g fill={skin} stroke="#000" strokeOpacity="0.18" strokeWidth="1.2">
+            <circle cx="33" cy="57" r="8" />
+            <circle cx="67" cy="57" r="8" />
+          </g>
+        )}
+        <Eyes style={eyes} sclera={a.piel === 'p5' || a.piel === 'p6'} cejasArriba={gesto === 'cejas'} />
         <Mouth style={mouth} />
         <HairFront style={a.pelo} color={hair} />
       </g>
@@ -190,9 +208,11 @@ function Beard({ style, color }: { style: AvatarConfig['barba']; color: string }
   }
 }
 
-function Eyes({ style, sclera }: { style: AvatarConfig['ojos']; sclera?: boolean }) {
+type EyeStyle = AvatarConfig['ojos'] | 'cerrados';
+
+function Eyes({ style, sclera, cejasArriba }: { style: EyeStyle; sclera?: boolean; cejasArriba?: boolean }) {
   const brows = (
-    <g fill="none" stroke={sclera ? '#120c08' : INK} strokeWidth="2.2" strokeLinecap="round">
+    <g fill="none" stroke={sclera ? '#120c08' : INK} strokeWidth="2.2" strokeLinecap="round" transform={cejasArriba ? 'translate(0 -5)' : undefined}>
       <path d="M36 38 Q41 35.5 45 37.5" />
       <path d="M55 37.5 Q59 35.5 64 38" />
     </g>
@@ -204,6 +224,14 @@ function Eyes({ style, sclera }: { style: AvatarConfig['ojos']; sclera?: boolean
     </g>
   );
   switch (style) {
+    case 'cerrados':
+      return (
+        <g fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round">
+          {brows}
+          <path d="M37 45 Q41 48 45 45" />
+          <path d="M55 45 Q59 48 63 45" />
+        </g>
+      );
     case 'felices':
       return (
         <g fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round">
@@ -267,11 +295,28 @@ function Eyes({ style, sclera }: { style: AvatarConfig['ojos']; sclera?: boolean
   }
 }
 
-function Mouth({ style }: { style: AvatarConfig['labios'] }) {
+type MouthStyle = AvatarConfig['labios'] | 'der' | 'izq' | 'labio' | 'trompa' | 'cerrada';
+
+function Mouth({ style }: { style: MouthStyle }) {
   const line = { fill: 'none', stroke: INK, strokeWidth: 2.4, strokeLinecap: 'round' as const };
   switch (style) {
     case 'serio':
       return <path d="M44 62.5 L56 62.5" {...line} />;
+    case 'der':
+      return <path d="M45 63 Q52 63.5 59 58.5" {...line} />;
+    case 'izq':
+      return <path d="M41 58.5 Q48 63.5 55 63" {...line} />;
+    case 'labio':
+      return (
+        <g>
+          <path d="M43.5 60.5 L56.5 60.5" {...line} />
+          <rect x="46.5" y="60.5" width="7" height="3.6" rx="1" fill="#fff" stroke={INK} strokeWidth="1" />
+        </g>
+      );
+    case 'trompa':
+      return <ellipse cx="50" cy="62" rx="3.4" ry="2.8" fill="#b8322f" stroke={INK} strokeWidth="1.2" />;
+    case 'cerrada':
+      return <path d="M47 62.5 L53 62.5" {...line} />;
     case 'picaro':
       return <path d="M43.5 61.5 Q51 66 57.5 59" {...line} />;
     case 'rojos':

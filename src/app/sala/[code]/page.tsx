@@ -12,7 +12,11 @@ import { api, sb } from '@/lib/supabase/browser';
 import { useSession } from '@/lib/useSession';
 import { sanitizeAvatar } from '@/lib/avatar';
 import { Toast } from '@/components/Toast';
+import { Resumen } from '@/components/Resumen';
+import { SonidoToggle } from '@/components/SonidoToggle';
+import { fetchRacha } from '@/lib/racha';
 import { useZumbido } from '@/lib/useZumbido';
+import { useMesaSocial } from '@/lib/useMesaSocial';
 import { prepararSonido } from '@/lib/zumbido';
 
 interface Room {
@@ -23,6 +27,7 @@ interface Room {
   target: 15 | 30;
   flor: boolean;
   status: 'waiting' | 'playing' | 'finished' | 'abandoned';
+  tournament_id?: string | null;
 }
 
 const FORMATO = { 2: 'Mano a mano', 4: 'Dos contra dos', 6: 'Tres contra tres' } as const;
@@ -38,11 +43,18 @@ export default function Sala() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [torneo, setTorneo] = useState<{ code: string; name: string } | null>(null);
 
   const loadRoom = useCallback(async () => {
-    const { data } = await sb().from('rooms').select('*').eq('code', code).maybeSingle();
+    let { data, error } = await sb().from('rooms').select('*, tournaments(code,name)').eq('code', code).maybeSingle();
+    // base sin la migración de torneos: la sala anda igual, sin el dato del torneo
+    if (error) ({ data } = await sb().from('rooms').select('*').eq('code', code).maybeSingle());
     if (!data) setNotFound(true);
-    else setRoom(data as Room);
+    else {
+      const { tournaments, ...r } = data as Room & { tournaments?: { code: string; name: string } | null };
+      setRoom(r);
+      setTorneo(tournaments ?? null);
+    }
   }, [code]);
 
   const loadPlayers = useCallback(async (roomId: string) => {
@@ -104,6 +116,15 @@ export default function Sala() {
 
   const mySeat = session ? (players.find((p) => p.user_id === session.userId)?.seat ?? null) : null;
   const zumbido = useZumbido(room?.id, mySeat, players);
+  const social = useMesaSocial(room?.id, session?.userId, mySeat, players);
+  const [racha, setRacha] = useState<number | null>(null);
+  const gameOver = view?.winner ?? null;
+  useEffect(() => {
+    if (gameOver === null || !session) return setRacha(null);
+    // el histórico se graba apenas después de la última jugada
+    const t = setTimeout(() => fetchRacha(session.userId).then(setRacha), 1500);
+    return () => clearTimeout(t);
+  }, [gameOver, session]);
 
   async function call(path: string, body: unknown = {}) {
     prepararSonido();
@@ -161,7 +182,13 @@ export default function Sala() {
           {FORMATO[room.players]}, a {room.target}
           {room.flor ? ', con flor' : ''}
         </span>
+        {torneo && (
+          <Link href={`/torneo/${torneo.code}`} className="rounded-full bg-oro px-3 py-1 font-semibold text-tinta">
+            Torneo: {torneo.name}
+          </Link>
+        )}
         <span className="rounded-full bg-pano-osc/70 px-3 py-1 font-mano text-base tracking-widest">{room.code}</span>
+        <SonidoToggle />
       </div>
     </header>
   );
@@ -231,7 +258,7 @@ export default function Sala() {
             </button>
           )}
           {!isHost && me && <p className="text-claro/80">Cuando esté la mesa completa, reparte quien la armó.</p>}
-          {me && (
+          {me && !torneo && (
             <button disabled={busy} onClick={() => call('leave')} className="rounded-xl px-4 py-2 text-claro/80 underline underline-offset-4">
               Levantarme
             </button>
@@ -276,7 +303,12 @@ export default function Sala() {
             <p className="text-lg">
               {view.score[view.team]} a {view.score[1 - view.team]}. La partida quedó en el ranking.
             </p>
-            {isHost ? (
+            <Resumen stats={view.stats} team={view.team} ganador={view.winner} players={players} racha={view.winner === view.team ? racha : null} />
+            {torneo ? (
+              <Link href={`/torneo/${torneo.code}`} className="rounded-2xl bg-rojo px-6 py-3 text-xl font-bold text-claro">
+                Volver al torneo
+              </Link>
+            ) : isHost ? (
               <button onClick={() => call('start')} disabled={busy} className="rounded-2xl bg-rojo px-6 py-3 text-xl font-bold text-claro">
                 Jugar la revancha
               </button>
@@ -286,7 +318,7 @@ export default function Sala() {
             <Link href="/ranking" className="underline">Ver el ranking</Link>
           </div>
         ) : (
-          <Mesa view={view} players={players} busy={busy} onAction={act} onZumbido={zumbido.mandar} zumbidoListo={zumbido.listo} />
+          <Mesa view={view} players={players} busy={busy} onAction={act} onZumbido={zumbido.mandar} zumbidoListo={zumbido.listo} burbujas={social.burbujas} senas={social.senas} onFrase={social.decir} onSena={social.hacerSena} />
         )}
         {msg && <p className="text-center text-[#ffb4a8]" role="alert">{msg}</p>}
       </section>

@@ -2,14 +2,18 @@
 // Contra la máquina: corre todo en el navegador con el mismo motor y un bot por asiento.
 // No usa la base de datos, así que no suma al ranking.
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { botAction } from '@/engine/bot.ts';
 import { applyAction, createGame, legalActions, viewFor } from '@/engine/engine.ts';
 import type { Action, Config, GameState } from '@/engine/engine.ts';
 import { Anotador } from '@/components/Anotador';
 import { Mesa, type Jugador } from '@/components/Mesa';
 import { Toast, type ToastData } from '@/components/Toast';
+import { Resumen } from '@/components/Resumen';
+import { SonidoToggle } from '@/components/SonidoToggle';
 import { prepararSonido, recibirZumbido } from '@/lib/zumbido';
+import { FRASES_BOT, senaParaMano } from '@/lib/social';
+import type { Gesto } from '@/lib/social';
 import { Avatar } from '@/components/Avatar';
 import { BOT_AVATARS, loadLocalAvatar } from '@/lib/avatar';
 import type { AvatarConfig } from '@/lib/avatar';
@@ -39,6 +43,46 @@ export default function Maquina() {
   const [myAvatar, setMyAvatar] = useState<AvatarConfig | null>(null);
   useEffect(() => setMyAvatar(loadLocalAvatar()), []);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [burbujas, setBurbujas] = useState<Record<number, string>>({});
+  const [senas, setSenas] = useState<Record<number, Gesto>>({});
+  const flash = <T,>(set: React.Dispatch<React.SetStateAction<Record<number, T>>>, seat: number, value: T, ms: number) => {
+    set((prev) => ({ ...prev, [seat]: value }));
+    setTimeout(() => set((prev) => (prev[seat] === value ? (Object.fromEntries(Object.entries(prev).filter(([k]) => Number(k) !== seat)) as Record<number, T>) : prev)), ms);
+  };
+  const pick = (xs: string[]) => xs[Math.floor(Math.random() * xs.length)];
+
+  // la máquina comenta la partida y el compañero máquina te hace señas al repartir
+  const visto = useRef<{ hand: number; count: number } | null>(null);
+  useEffect(() => {
+    if (!state) {
+      visto.current = null;
+      return;
+    }
+    const prev = visto.current;
+    const h = state.hand;
+    visto.current = { hand: h.number, count: h.events.length };
+    const nuevaMano = !prev || prev.hand !== h.number;
+    const nuevos = !prev
+      ? h.events
+      : nuevaMano
+        ? [...(state.lastHand?.events.slice(prev.count) ?? []), ...h.events]
+        : h.events.slice(prev.count);
+    const rivalBot = () => [1, 3, 5].filter((s) => s < state.config.players)[Math.floor(Math.random() * (state.config.players / 2))];
+    for (const e of nuevos) {
+      if (e.t === 'call' && e.seat % 2 === 1 && ['truco', 'retruco', 'vale4'].includes(e.call) && Math.random() < 0.3)
+        flash(setBurbujas, e.seat, pick(FRASES_BOT.canta), 3500);
+      if (e.t === 'no_quiero' && e.seat === HUMAN && e.to === 'truco' && Math.random() < 0.5)
+        flash(setBurbujas, rivalBot(), pick(FRASES_BOT.noQuiere), 3500);
+      if (e.t === 'hand_end' && e.winner === 1 && Math.random() < 0.2) flash(setBurbujas, rivalBot(), pick(FRASES_BOT.gana), 3500);
+    }
+    if (nuevaMano && state.winner === null && state.config.players > 2) {
+      for (let seat = 2; seat < state.config.players; seat += 2) {
+        const g = senaParaMano(h.dealt[seat], state.config.flor);
+        setTimeout(() => flash(setSenas, seat, g, 3500), 1200 + seat * 300);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
   const [thinking, setThinking] = useState(false);
 
   const actor = state ? nextActor(state) : null;
@@ -165,6 +209,7 @@ export default function Maquina() {
           Contra {rivals}, a {config.target}
           {config.flor ? ', con flor' : ''}
         </span>
+        <SonidoToggle />
       </header>
 
       <aside className="order-2 lg:order-1">
@@ -182,6 +227,7 @@ export default function Maquina() {
             <p className="text-lg">
               {view.score[view.team]} a {view.score[1 - view.team]}.
             </p>
+            <Resumen stats={view.stats} team={view.team} ganador={view.winner} players={players} />
             <div className="flex flex-wrap justify-center gap-3">
               <button onClick={empezar} className="rounded-2xl bg-rojo px-6 py-3 text-xl font-bold text-claro">
                 Jugar otra
@@ -192,7 +238,7 @@ export default function Maquina() {
             </div>
           </div>
         ) : (
-          <Mesa view={view} players={players} busy={actor !== HUMAN} onAction={jugar} />
+          <Mesa view={view} players={players} busy={actor !== HUMAN} onAction={jugar} burbujas={burbujas} senas={senas} onFrase={(f) => flash(setBurbujas, HUMAN, f, 4500)} onSena={(g) => flash(setSenas, HUMAN, g, 3500)} />
         )}
         {thinking && !finished && (
           <p className="text-center text-sm text-claro/70" role="status">

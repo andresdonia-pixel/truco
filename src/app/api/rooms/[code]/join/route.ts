@@ -10,6 +10,7 @@ export const POST = handle(async (req: Request, ctx: RouteContext<'/api/rooms/[c
   const db = admin();
   const room = await getRoom(db, code);
   if (room.status !== 'waiting') throw new HttpError(409, 'La partida ya empezó.');
+  if (room.tournament_id) throw new HttpError(409, 'Este partido es de un torneo: los lugares ya están asignados.');
 
   const { data: profile } = await db.from('profiles').select('id').eq('id', uid).maybeSingle();
   if (!profile) throw new HttpError(400, 'Elegí un apodo antes de sentarte.');

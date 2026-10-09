@@ -3,6 +3,7 @@ import { viewFor } from '@/engine/engine.ts';
 import type { GameState } from '@/engine/engine.ts';
 import type { Admin } from '@/lib/supabase/admin';
 import { HttpError } from './http';
+import { onTournamentMatchEnd } from './torneos';
 
 export interface Room {
   id: string;
@@ -12,6 +13,7 @@ export interface Room {
   target: 15 | 30;
   flor: boolean;
   status: 'waiting' | 'playing' | 'finished' | 'abandoned';
+  tournament_id: string | null;
 }
 
 export interface SeatRow {
@@ -109,4 +111,8 @@ async function recordMatch(db: Admin, room: Room, seats: SeatRow[], state: GameS
   const { error: e2 } = await db.from('match_players').insert(rows);
   if (e2) throw e2;
   await db.from('rooms').update({ status: 'finished' }).eq('id', room.id);
+  if (room.tournament_id) {
+    const champ = seats.find((s) => s.seat % 2 === winner)!.user_id; // los torneos son mano a mano
+    await onTournamentMatchEnd(db, room.tournament_id, room.id, champ);
+  }
 }

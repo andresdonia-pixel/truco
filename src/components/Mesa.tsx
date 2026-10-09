@@ -1,9 +1,13 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { sonar } from '@/lib/sonidos';
 import type { Action, GameEvent, PlayerView, Team } from '@/engine/engine.ts';
 import { Avatar } from './Avatar';
 import { Carta, Dorso } from './Carta';
 import type { AvatarConfig } from '@/lib/avatar';
+import { SENAS } from '@/lib/social';
+import type { Gesto } from '@/lib/social';
+import { Frases, Senas } from './Social';
 import { actionLabel, callText, eventText, pendingText } from '@/lib/labels';
 
 export interface Jugador {
@@ -21,6 +25,11 @@ interface Props {
   /** Si viene, aparece el botón de zumbido para apurar al que tiene que jugar. */
   onZumbido?: (targets: number[]) => void;
   zumbidoListo?: boolean;
+  /** Globitos de chat y señas activas por asiento. */
+  burbujas?: Record<number, string>;
+  senas?: Record<number, Gesto>;
+  onFrase?: (f: string) => void;
+  onSena?: (g: Gesto) => void;
 }
 
 interface TableBaza {
@@ -71,7 +80,7 @@ const BUTTON: Record<string, string> = {
 
 const BAZA_NAME = ['Primera', 'Segunda', 'Tercera'];
 
-export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = true }: Props) {
+export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = true, burbujas = {}, senas = {}, onFrase, onSena }: Props) {
   const h = view.hand;
   const n = view.config.players;
   const nameOf = (seat: number) => players.find((p) => p.seat === seat)?.nickname ?? `Asiento ${seat + 1}`;
@@ -134,6 +143,18 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
     .slice(-5) as string[];
 
   const seats = Array.from({ length: n }, (_, i) => i);
+
+  // sonidos de lo que pasó desde el último render
+  const visto = useRef<{ hand: number; count: number } | null>(null);
+  useEffect(() => {
+    const prev = visto.current;
+    visto.current = { hand: h.number, count: h.events.length };
+    if (!prev) return; // al entrar no suena lo que ya había pasado
+    const nuevos = prev.hand === h.number ? h.events.slice(prev.count) : h.events;
+    if (nuevos.some((e) => e.t === 'deal')) sonar('barajar');
+    else if (nuevos.some((e) => e.t === 'call')) sonar('canto');
+    else if (nuevos.some((e) => e.t === 'play')) sonar('carta');
+  }, [h.number, h.events]);
   const lastEvent = h.events[h.events.length - 1];
   const shouting = (seat: number) =>
     (pending?.seat === seat) || (lastEvent?.t === 'call' && lastEvent.seat === seat) || (lastEvent?.t === 'mazo' && lastEvent.seat === seat);
@@ -201,13 +222,19 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
                 style={{ left: `${g.outer.left}%`, top: `${g.outer.top}%` }}
               >
                 <div className="relative shrink-0">
+                  {burbujas[seat] && (
+                    <span className="canto absolute bottom-full left-1/2 z-20 mb-1.5 w-max max-w-[9.5rem] -translate-x-1/2 rounded-xl bg-white px-2 py-1 text-center text-xs font-semibold leading-tight text-tinta shadow-[0_2px_0_rgba(0,0,0,.3)] after:absolute after:left-1/2 after:top-full after:-ml-1 after:border-4 after:border-transparent after:border-t-white">
+                      {burbujas[seat]}
+                    </span>
+                  )}
                   <Avatar
                     avatar={avatarOf(seat)}
                     size={n === 6 ? 38 : 48}
+                    gesto={senas[seat]}
                     shouting={shouting(seat)}
                     className={`rounded-full ${isTurn(seat) ? 'ring-[3px] ring-oro' : partner ? 'ring-2 ring-claro/60' : ''}`}
                   />
-                  <div className="absolute -bottom-1 -right-2 flex" aria-label={`${h.cardsLeft[seat]} cartas en la mano`}>
+                  <div className="absolute -bottom-1 -right-4 flex" aria-label={`${h.cardsLeft[seat]} cartas en la mano`}>
                     {Array.from({ length: h.cardsLeft[seat] }, (_, i) => (
                       <span key={i} className={i > 0 ? '-ml-1.5' : ''} style={{ transform: `rotate(${(i - 1) * 12}deg)` }}>
                         <Dorso size="xs" />
@@ -228,6 +255,11 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
                   {bubbles[seat] && (
                     <span key={bubbles[seat]} className="canto whitespace-nowrap rounded-xl bg-claro px-2 py-0.5 font-mano text-sm font-bold text-tinta sm:text-base">
                       {bubbles[seat]}
+                    </span>
+                  )}
+                  {senas[seat] && partner && (
+                    <span key={`s-${senas[seat]}`} className="canto whitespace-nowrap rounded-xl bg-oro px-2 py-0.5 text-xs font-bold text-tinta">
+                      Seña: {SENAS.find((x) => x.id === senas[seat])?.significa}
                     </span>
                   )}
                 </div>
@@ -307,7 +339,14 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
           ))}
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <Avatar avatar={avatarOf(view.seat)} size={40} shouting={shouting(view.seat)} className={`rounded-full ${isTurn(view.seat) ? 'ring-[3px] ring-oro' : ''}`} />
+          <span className="relative">
+            {burbujas[view.seat] && (
+              <span className="canto absolute bottom-full left-1/2 z-20 mb-1.5 w-max max-w-[11rem] -translate-x-1/2 rounded-xl bg-white px-2 py-1 text-center text-xs font-semibold leading-tight text-tinta shadow-[0_2px_0_rgba(0,0,0,.3)]">
+                {burbujas[view.seat]}
+              </span>
+            )}
+            <Avatar avatar={avatarOf(view.seat)} size={40} gesto={senas[view.seat]} shouting={shouting(view.seat)} className={`rounded-full ${isTurn(view.seat) ? 'ring-[3px] ring-oro' : ''}`} />
+          </span>
           <span className={`rounded-full px-2.5 py-0.5 ${isTurn(view.seat) ? 'bg-oro font-semibold text-tinta' : 'bg-pano-osc/70'}`}>
             {isTurn(view.seat) ? 'Te toca' : nameOf(view.seat)}
           </span>
@@ -319,6 +358,13 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
           )}
         </div>
       </div>
+
+      {(onFrase || (onSena && n > 2)) && (
+        <div className="flex justify-center gap-2">
+          {onFrase && <Frases onPick={onFrase} />}
+          {onSena && n > 2 && <Senas avatar={avatarOf(view.seat)} onPick={onSena} />}
+        </div>
+      )}
 
       {/* botonera de cantos */}
       {others.length > 0 && (

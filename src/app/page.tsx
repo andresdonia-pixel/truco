@@ -7,6 +7,7 @@ import { PerfilEditor } from '@/components/PerfilEditor';
 import { Carta } from '@/components/Carta';
 import { api, sb } from '@/lib/supabase/browser';
 import { useSession } from '@/lib/useSession';
+import { fetchRacha } from '@/lib/racha';
 
 interface Stats {
   played: number;
@@ -24,6 +25,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [racha, setRacha] = useState(0);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function Home() {
       .eq('user_id', session.userId)
       .maybeSingle()
       .then(({ data }) => setStats(data as Stats | null));
+    fetchRacha(session.userId).then(setRacha);
   }, [session]);
 
   async function crear() {
@@ -104,6 +107,7 @@ export default function Home() {
               {stats && (
                 <span className="block text-base text-claro/75">
                   {stats.played} partidas, {stats.won} ganadas, {stats.points_for} puntos hechos.
+                  {racha >= 2 && ` Racha: ${racha} seguidas.`}
                 </span>
               )}
             </p>
@@ -158,6 +162,10 @@ export default function Home() {
               <Link href="/maquina" className="rounded-3xl bg-pano-osc/60 p-6 transition hover:bg-pano-osc/80">
                 <span className="block text-2xl font-bold">Contra la máquina</span>
                 <span className="text-claro/75">Practicá sin esperar a nadie.</span>
+              </Link>
+              <Link href="/torneo" className="rounded-3xl bg-pano-osc/60 p-6 transition hover:bg-pano-osc/80">
+                <span className="block text-2xl font-bold">Torneo entre amigos</span>
+                <span className="text-claro/75">Llaves de 4 u 8, el ganador pasa solo.</span>
               </Link>
               <Link href="/ranking" className="rounded-3xl bg-papel p-6 font-mano text-2xl font-bold text-tinta shadow-[2px_4px_0_rgba(0,0,0,.35)] rotate-[1deg]">
                 Ver el ranking

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { sb } from '@/lib/supabase/browser';
+import { esSena } from '@/lib/social';
 import type { Jugador } from './Mesa';
 
 interface Message {
@@ -39,11 +40,12 @@ export function Chat({ roomId, userId, myTeam, teamChat, players }: Props) {
       .eq('room_id', roomId)
       .order('created_at', { ascending: false })
       .limit(80)
-      .then(({ data }) => alive && data && setMessages((data as Message[]).reverse()));
+      .then(({ data }) => alive && data && setMessages((data as Message[]).filter((m) => !esSena(m.body)).reverse()));
     const channel = client
       .channel(`chat-${roomId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (p) => {
         const m = p.new as Message;
+        if (esSena(m.body)) return;
         setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev.slice(-150), m]));
         if (m.channel !== tabRef.current) setUnread((u) => ({ ...u, [m.channel]: u[m.channel] + 1 }));
       })

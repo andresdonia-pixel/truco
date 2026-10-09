@@ -279,3 +279,36 @@ test('3v3: envido entre seis, gana el más alto y empata el más cercano a la ma
 test('simulación: 300 partidas 3v3 con flor a 30', () => {
   assert.ok(simulate({ players: 6, target: 30, flor: true }, 300) > 300);
 });
+
+test('estadísticas: truco, envido, bazas, mazo y mejor envido', () => {
+  let s = createGame(C1v1, 1, { hands: [['7o', '6o', '1e'], ['7c', '4e', '5b']] });
+  s = act(s, 0, { type: 'envido', call: 'envido' });
+  s = act(s, 1, { type: 'quiero' });
+  s = act(s, 0, { type: 'truco' });
+  s = act(s, 1, { type: 'quiero' });
+  s = act(s, 0, play('1e'));
+  s = act(s, 1, play('7c'));
+  s = act(s, 0, play('7o'));
+  s = act(s, 1, play('4e'));
+  const st = s.stats!;
+  assert.deepEqual(s.score, [4, 0]);
+  assert.equal(st.teams[0].envidos, 1);
+  assert.equal(st.teams[0].puntosEnvido, 2);
+  assert.equal(st.teams[0].trucos, 1);
+  assert.equal(st.teams[0].puntosTruco, 2);
+  assert.equal(st.teams[0].bazas, 2);
+  assert.equal(st.teams[0].manos, 1);
+  assert.equal(st.mejorEnvido[0], 33);
+  s = act(s, 1, { type: 'mazo' });
+  assert.equal(s.stats!.teams[1].mazos, 1);
+  assert.equal(s.stats!.teams[0].manos, 2);
+  assert.equal(s.stats!.teams[0].trucos, 1);
+});
+
+test('estadísticas: una partida guardada sin stats sigue andando', () => {
+  const s = createGame(C1v1, 3);
+  delete (s as { stats?: unknown }).stats;
+  const t = act(s, 0, { type: 'mazo' });
+  assert.equal(t.stats!.teams[0].mazos, 1);
+  assert.ok(viewFor(t, 0).stats);
+});

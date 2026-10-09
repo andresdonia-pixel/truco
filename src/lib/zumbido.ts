@@ -1,21 +1,9 @@
 'use client';
 // El zumbido de MSN: sacude la pantalla, suena un bzzz sintetizado y vibra el celular.
 
+import { audio, sonidoActivo } from './sonidos';
+
 export const ZUMBIDO_COOLDOWN_MS = 15_000;
-
-let ctx: AudioContext | null = null;
-
-function audio(): AudioContext | null {
-  try {
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return null;
-    ctx ??= new AC();
-    if (ctx.state === 'suspended') void ctx.resume();
-    return ctx;
-  } catch {
-    return null;
-  }
-}
 
 /** Llamar en un clic del usuario para que el navegador permita el sonido después. */
 export function prepararSonido() {
@@ -23,6 +11,7 @@ export function prepararSonido() {
 }
 
 function bzzz() {
+  if (!sonidoActivo()) return;
   const ac = audio();
   if (!ac) return;
   const now = ac.currentTime;

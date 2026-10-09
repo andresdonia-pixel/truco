@@ -16,6 +16,11 @@ Truco argentino multijugador (1v1, 2v2 y 3v3) en tiempo real, con chat general y
 - [x] Mesa con las cartas jugadas delante de cada jugador; la mano anterior queda visible hasta la primera carta nueva
 - [x] Personajes: cara, piel, pelo, barba, ojos, labios y fondo, dibujados en SVG propio (`src/components/Avatar.tsx`); abren la boca cuando cantan. Base existente: correr `supabase/migrations_003_avatar.sql`
 - [x] Zumbido estilo MSN para apurar al que tiene que jugar (Realtime broadcast, sin tocar la base): sacude la pantalla, suena y vibra. Contra la máquina, El Mago te zumba si tardás
+- [x] Estadísticas al final de cada partida (manos, bazas, trucos, envidos, flores, mazos, mejores envidos) y racha de victorias
+- [x] Sonidos de mesa sintetizados con Web Audio (carta, barajar, canto, victoria) y botón de silencio
+- [x] Frases rápidas: globitos sobre el personaje; la máquina también comenta la partida
+- [x] Señas del truco en el personaje. Viajan por el canal de equipo (RLS), así que los rivales nunca las reciben. El compañero máquina hace señas al repartir
+- [x] Torneos de 4 u 8, mano a mano, con llaves y salas automáticas. Base existente: correr `supabase/migrations_004_torneos.sql`
 
 ## Correr local
 

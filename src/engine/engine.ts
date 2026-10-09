@@ -83,6 +83,23 @@ export interface HandSummary {
   events: GameEvent[];
 }
 
+export interface TeamStats {
+  manos: number; // manos ganadas
+  trucos: number; // manos ganadas en las que se cantó truco
+  puntosTruco: number;
+  envidos: number; // envidos ganados (queridos o no)
+  puntosEnvido: number;
+  flores: number;
+  bazas: number;
+  mazos: number; // veces que el equipo se fue al mazo
+}
+
+export interface MatchStats {
+  teams: [TeamStats, TeamStats];
+  /** Mejor tanto mostrado por cada asiento (sólo lo que se cantó en la mesa). */
+  mejorEnvido: Record<number, number>;
+}
+
 export interface GameState {
   config: Config;
   score: [number, number];
@@ -90,6 +107,13 @@ export interface GameState {
   hand: HandState;
   lastHand: HandSummary | null;
   winner: Team | null;
+  stats?: MatchStats; // opcional para partidas guardadas antes de las estadísticas
+}
+
+const emptyTeam = (): TeamStats => ({ manos: 0, trucos: 0, puntosTruco: 0, envidos: 0, puntosEnvido: 0, flores: 0, bazas: 0, mazos: 0 });
+export const emptyStats = (): MatchStats => ({ teams: [emptyTeam(), emptyTeam()], mejorEnvido: {} });
+function stats(state: GameState): MatchStats {
+  return (state.stats ??= emptyStats());
 }
 
 export class IllegalMove extends Error {}
@@ -108,6 +132,7 @@ export function createGame(config: Config, seed: number, opts: { hands?: CardId[
     rng: seed >>> 0,
     hand: null as unknown as HandState,
     lastHand: null,
+    stats: emptyStats(),
     winner: null,
   } as GameState;
   startHand(state, 0, 1, opts.hands);
@@ -272,6 +297,7 @@ export function applyAction(prev: GameState, seat: number, action: Action): Game
 
     case 'mazo':
       h.events.push({ t: 'mazo', seat });
+      stats(state).teams[team].mazos++;
       if (p && p.kind === 'envido') {
         rejectEnvido(state, p);
         if (state.winner !== null) break;
@@ -309,6 +335,7 @@ function playCard(state: GameState, seat: number, card: CardId) {
     baza.winnerSeat = best[0].seat;
   }
   h.events.push({ t: 'baza', index: h.bazas.length - 1, winner: baza.winner, seat: baza.winnerSeat });
+  if (baza.winner !== 'parda') stats(state).teams[baza.winner].bazas++;
 
   const winner = handWinner(h);
   if (winner !== null) {
@@ -348,6 +375,12 @@ function addPoints(state: GameState, team: Team, pts: number, reason: string): b
   if (pts <= 0) return false;
   state.score[team] += pts;
   state.hand.events.push({ t: 'points', team, pts, reason });
+  const t = stats(state).teams[team];
+  if (reason === 'mano') t.puntosTruco += pts;
+  else if (reason.startsWith('envido')) {
+    t.envidos++;
+    t.puntosEnvido += pts;
+  } else t.flores++;
   if (state.score[team] >= state.config.target) {
     state.winner = team;
     state.hand.pending = null;
@@ -371,6 +404,9 @@ function endHand(state: GameState, winner: Team, pts: number) {
   h.pending = null;
   h.suspended = null;
   h.events.push({ t: 'hand_end', winner, pts });
+  const t = stats(state).teams[winner];
+  t.manos++;
+  if (h.events.some((e) => e.t === 'call' && (e.call === 'truco' || e.call === 'retruco' || e.call === 'vale4'))) t.trucos++;
   if (addPoints(state, winner, pts, 'mano')) return;
   state.lastHand = { number: h.number, winner, events: h.events };
   startHand(state, (h.mano + 1) % state.config.players, h.number + 1);
@@ -400,6 +436,8 @@ function resolveEnvido(state: GameState, chain: EnvidoCall[]) {
   const win = bestOf(state, all, (s) => envidoPoints(h.dealt[s]));
   const winner = teamOf(win.seat);
   h.events.push({ t: 'tanto', kind: 'envido', seat: win.seat, value: win.value });
+  const best = stats(state).mejorEnvido;
+  best[win.seat] = Math.max(best[win.seat] ?? 0, win.value);
   h.envidoDone = true;
   const pts = chain.includes('falta') ? faltaPoints(state, winner) : chain.reduce((s, c) => s + ENVIDO_VALUES[c], 0);
   if (addPoints(state, winner, pts, 'envido')) return;
@@ -475,6 +513,7 @@ export interface PlayerView {
     events: GameEvent[];
   };
   lastHand: HandSummary | null;
+  stats: MatchStats;
   legal: Action[];
 }
 
@@ -501,6 +540,7 @@ export function viewFor(state: GameState, seat: number): PlayerView {
       events: h.events,
     },
     lastHand: state.lastHand,
+    stats: state.stats ?? emptyStats(),
     legal: legalActions(state, seat),
   });
 }
