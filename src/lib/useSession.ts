@@ -1,13 +1,16 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { sb } from '@/lib/supabase/browser';
+import { sanitizeAvatar, saveLocalAvatar } from '@/lib/avatar';
+import type { AvatarConfig } from '@/lib/avatar';
 
 export interface Session {
   userId: string;
   nickname: string | null;
+  avatar: AvatarConfig | null;
 }
 
-/** Sesión anónima de Supabase + apodo. El histórico queda atado a este usuario. */
+/** Sesión anónima de Supabase + apodo y personaje. El histórico queda atado a este usuario. */
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,8 +27,10 @@ export function useSession() {
           data = { session: res.data.session! };
         }
         const userId = data.session!.user.id;
-        const { data: profile } = await client.from('profiles').select('nickname').eq('id', userId).maybeSingle();
-        if (alive) setSession({ userId, nickname: profile?.nickname ?? null });
+        const { data: profile } = await client.from('profiles').select('nickname,avatar').eq('id', userId).maybeSingle();
+        const avatar = profile?.avatar ? sanitizeAvatar(profile.avatar) : null;
+        if (avatar) saveLocalAvatar(avatar);
+        if (alive) setSession({ userId, nickname: profile?.nickname ?? null, avatar });
       } catch (e) {
         const text = e instanceof Error ? e.message : '';
         if (alive)
@@ -41,16 +46,18 @@ export function useSession() {
     };
   }, []);
 
-  const saveNickname = useCallback(
-    async (nickname: string) => {
+  const saveProfile = useCallback(
+    async (nickname: string, avatar: AvatarConfig) => {
       if (!session) return;
       const clean = nickname.trim().slice(0, 20);
-      const { error: e } = await sb().from('profiles').upsert({ id: session.userId, nickname: clean });
-      if (e) throw new Error('No se pudo guardar el apodo');
-      setSession({ ...session, nickname: clean });
+      const safe = sanitizeAvatar(avatar);
+      const { error: e } = await sb().from('profiles').upsert({ id: session.userId, nickname: clean, avatar: safe });
+      if (e) throw new Error('No se pudo guardar tu personaje');
+      saveLocalAvatar(safe);
+      setSession({ ...session, nickname: clean, avatar: safe });
     },
     [session],
   );
 
-  return { session, error, saveNickname };
+  return { session, error, saveProfile };
 }

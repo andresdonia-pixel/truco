@@ -3,10 +3,13 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { sb } from '@/lib/supabase/browser';
 import { useSession } from '@/lib/useSession';
+import { Avatar } from '@/components/Avatar';
+import { sanitizeAvatar } from '@/lib/avatar';
 
 interface Row {
   user_id: string;
   nickname: string;
+  avatar: unknown;
   played: number;
   won: number;
   points_for: number;
@@ -58,7 +61,12 @@ export default function Ranking() {
               {rows.map((r, i) => (
                 <tr key={r.user_id} className={`border-b border-tinta/15 ${r.user_id === session?.userId ? 'bg-oro/30' : ''}`}>
                   <td className="py-1 pr-2">{i + 1}</td>
-                  <td className="py-1 pr-2 font-bold">{r.nickname}</td>
+                  <td className="py-1 pr-2 font-bold">
+                    <span className="flex items-center gap-2">
+                      <Avatar avatar={r.avatar ? sanitizeAvatar(r.avatar) : null} size={30} />
+                      {r.nickname}
+                    </span>
+                  </td>
                   <td className="py-1 pr-2 text-right">{r.won}</td>
                   <td className="py-1 pr-2 text-right">{r.played}</td>
                   <td className="py-1 text-right">{r.win_pct ?? 0}%</td>

@@ -11,6 +11,7 @@ create extension if not exists pgcrypto;
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   nickname text not null check (char_length(nickname) between 2 and 20),
+  avatar jsonb check (avatar is null or (jsonb_typeof(avatar) = 'object' and pg_column_size(avatar) < 600)),
   created_at timestamptz not null default now()
 );
 
@@ -99,10 +100,11 @@ select
   count(mp.*) filter (where mp.won)::int as won,
   coalesce(sum(mp.points_for), 0)::int as points_for,
   coalesce(sum(mp.points_against), 0)::int as points_against,
-  round(100.0 * count(mp.*) filter (where mp.won) / nullif(count(mp.*), 0), 1) as win_pct
+  round(100.0 * count(mp.*) filter (where mp.won) / nullif(count(mp.*), 0), 1) as win_pct,
+  p.avatar
 from public.profiles p
 join public.match_players mp on mp.user_id = p.id
-group by p.id, p.nickname;
+group by p.id, p.nickname, p.avatar;
 
 -- ---------- helpers para RLS ----------
 create function public.is_member(r uuid) returns boolean

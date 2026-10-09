@@ -8,6 +8,9 @@ import { applyAction, createGame, legalActions, viewFor } from '@/engine/engine.
 import type { Action, Config, GameState } from '@/engine/engine.ts';
 import { Anotador } from '@/components/Anotador';
 import { Mesa, type Jugador } from '@/components/Mesa';
+import { Avatar } from '@/components/Avatar';
+import { BOT_AVATARS, loadLocalAvatar } from '@/lib/avatar';
+import type { AvatarConfig } from '@/lib/avatar';
 
 const HUMAN = 0;
 // asientos pares = tu equipo, impares = rivales
@@ -31,6 +34,8 @@ function nextActor(s: GameState): number | null {
 export default function Maquina() {
   const [config, setConfig] = useState<Config>({ players: 2, target: 30, flor: false });
   const [state, setState] = useState<GameState | null>(null);
+  const [myAvatar, setMyAvatar] = useState<AvatarConfig | null>(null);
+  useEffect(() => setMyAvatar(loadLocalAvatar()), []);
   const [thinking, setThinking] = useState(false);
 
   const actor = state ? nextActor(state) : null;
@@ -52,8 +57,14 @@ export default function Maquina() {
 
   const view = useMemo(() => (state ? viewFor(state, HUMAN) : null), [state]);
   const players: Jugador[] = useMemo(
-    () => NAMES[config.players].map((nickname, seat) => ({ seat, user_id: `bot-${seat}`, nickname })),
-    [config.players],
+    () =>
+      NAMES[config.players].map((nickname, seat) => ({
+        seat,
+        user_id: `bot-${seat}`,
+        nickname,
+        avatar: seat === HUMAN ? myAvatar ?? BOT_AVATARS[0] : BOT_AVATARS[seat],
+      })),
+    [config.players, myAvatar],
   );
 
   function empezar() {
@@ -76,6 +87,18 @@ export default function Maquina() {
         <section className="flex flex-col gap-4 rounded-3xl bg-pano-osc/60 p-6">
           <h1 className="text-3xl font-bold">Contra la máquina</h1>
           <p className="text-claro/80">Para practicar sin esperar a nadie. Estas partidas no suman al ranking.</p>
+          <div className="flex items-center gap-4 rounded-2xl bg-pano-osc/50 p-3">
+            <Avatar avatar={myAvatar ?? BOT_AVATARS[0]} size={56} title="Tu personaje" />
+            <span className="text-2xl font-bold text-claro/60" aria-hidden>vs</span>
+            <div className="flex -space-x-3">
+              {NAMES[config.players].map((name, seat) =>
+                seat % 2 === 1 ? <Avatar key={seat} avatar={BOT_AVATARS[seat]} size={48} title={name} className="rounded-full ring-2 ring-pano-osc" /> : null,
+              )}
+            </div>
+            <Link href="/" className="ml-auto text-sm text-claro/80 underline underline-offset-4">
+              {myAvatar ? 'Editar tu personaje' : 'Armá tu personaje'}
+            </Link>
+          </div>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-2 text-claro/80">Jugadores</legend>
             <div className="flex flex-wrap gap-2">

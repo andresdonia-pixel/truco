@@ -2,7 +2,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Apodo } from '@/components/Apodo';
+import { Avatar } from '@/components/Avatar';
+import { PerfilEditor } from '@/components/PerfilEditor';
 import { Carta } from '@/components/Carta';
 import { api, sb } from '@/lib/supabase/browser';
 import { useSession } from '@/lib/useSession';
@@ -14,7 +15,7 @@ interface Stats {
 }
 
 export default function Home() {
-  const { session, error, saveNickname } = useSession();
+  const { session, error, saveProfile } = useSession();
   const router = useRouter();
   const [players, setPlayers] = useState<2 | 4 | 6>(2);
   const [target, setTarget] = useState<15 | 30>(30);
@@ -77,10 +78,12 @@ export default function Home() {
 
       {session && (!session.nickname || editing) && (
         <section className="rounded-3xl bg-pano-osc/60 p-6">
-          <Apodo
-            initial={session.nickname ?? ''}
-            onSave={async (n) => {
-              await saveNickname(n);
+          <PerfilEditor
+            initialNickname={session.nickname ?? ''}
+            initialAvatar={session.avatar}
+            onCancel={session.nickname ? () => setEditing(false) : undefined}
+            onSave={async (n, a) => {
+              await saveProfile(n, a);
               setEditing(false);
             }}
           />
@@ -89,17 +92,22 @@ export default function Home() {
 
       {session?.nickname && !editing && (
         <>
-          <p className="text-lg">
-            Jugás como <strong>{session.nickname}</strong>.{' '}
-            <button onClick={() => setEditing(true)} className="underline decoration-claro/40 underline-offset-4">
-              Cambiar apodo
+          <div className="flex items-center gap-4">
+            <button onClick={() => setEditing(true)} aria-label="Editar tu personaje" className="shrink-0 rounded-full transition hover:scale-105">
+              <Avatar avatar={session.avatar} size={72} />
             </button>
-            {stats && (
-              <span className="block text-base text-claro/75">
-                {stats.played} partidas, {stats.won} ganadas, {stats.points_for} puntos hechos.
-              </span>
-            )}
-          </p>
+            <p className="text-lg">
+              Jugás como <strong>{session.nickname}</strong>.{' '}
+              <button onClick={() => setEditing(true)} className="underline decoration-claro/40 underline-offset-4">
+                {session.avatar ? 'Editar personaje' : 'Armá tu personaje'}
+              </button>
+              {stats && (
+                <span className="block text-base text-claro/75">
+                  {stats.played} partidas, {stats.won} ganadas, {stats.points_for} puntos hechos.
+                </span>
+              )}
+            </p>
+          </div>
 
           <section className="grid gap-6 sm:grid-cols-[1.3fr_1fr]">
             <div className="flex flex-col gap-4 rounded-3xl bg-pano-osc/60 p-6">

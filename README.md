@@ -14,6 +14,7 @@ Truco argentino multijugador (1v1, 2v2 y 3v3) en tiempo real, con chat general y
 - [x] Modo contra la máquina (`/maquina`, bot en `src/engine/bot.ts`), 1v1, 2v2 y 3v3, corre en el navegador y no suma al ranking
 - [x] Truco de a 6 (3 contra 3), envido por equipo (sin pica-pica). Base existente: correr `supabase/migrations_002_truco_de_6.sql`
 - [x] Mesa con las cartas jugadas delante de cada jugador; la mano anterior queda visible hasta la primera carta nueva
+- [x] Personajes: cara, piel, pelo, barba, ojos, labios y fondo, dibujados en SVG propio (`src/components/Avatar.tsx`); abren la boca cuando cantan. Base existente: correr `supabase/migrations_003_avatar.sql`
 
 ## Correr local
 

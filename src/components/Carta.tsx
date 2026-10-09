@@ -59,7 +59,7 @@ interface CartaProps {
 }
 
 const SIZES = {
-  xs: 'w-4 h-6 sm:w-5 sm:h-[30px]',
+  xs: 'w-3 h-[18px] sm:w-3.5 sm:h-5',
   mesa: 'w-9 h-[54px] sm:w-12 sm:h-[72px]',
   sm: 'w-11 h-[66px]',
   md: 'w-16 h-24',

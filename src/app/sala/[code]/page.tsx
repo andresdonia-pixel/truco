@@ -4,11 +4,13 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import type { Action, PlayerView } from '@/engine/engine.ts';
 import { Anotador } from '@/components/Anotador';
-import { Apodo } from '@/components/Apodo';
+import { Avatar } from '@/components/Avatar';
+import { PerfilEditor } from '@/components/PerfilEditor';
 import { Chat } from '@/components/Chat';
 import { Mesa, type Jugador } from '@/components/Mesa';
 import { api, sb } from '@/lib/supabase/browser';
 import { useSession } from '@/lib/useSession';
+import { sanitizeAvatar } from '@/lib/avatar';
 
 interface Room {
   id: string;
@@ -25,7 +27,7 @@ const FORMATO = { 2: 'Mano a mano', 4: 'Dos contra dos', 6: 'Tres contra tres' }
 export default function Sala() {
   const { code: rawCode } = useParams<{ code: string }>();
   const code = rawCode.toUpperCase();
-  const { session, error: sessionError, saveNickname } = useSession();
+  const { session, error: sessionError, saveProfile } = useSession();
   const [room, setRoom] = useState<Room | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [players, setPlayers] = useState<Jugador[]>([]);
@@ -43,14 +45,15 @@ export default function Sala() {
   const loadPlayers = useCallback(async (roomId: string) => {
     const { data } = await sb()
       .from('room_players')
-      .select('seat,user_id,profiles(nickname)')
+      .select('seat,user_id,profiles(nickname,avatar)')
       .eq('room_id', roomId)
       .order('seat');
     setPlayers(
-      ((data ?? []) as unknown as { seat: number; user_id: string; profiles: { nickname: string } | null }[]).map((r) => ({
+      ((data ?? []) as unknown as { seat: number; user_id: string; profiles: { nickname: string; avatar: unknown } | null }[]).map((r) => ({
         seat: r.seat,
         user_id: r.user_id,
         nickname: r.profiles?.nickname ?? 'Sin apodo',
+        avatar: r.profiles?.avatar ? sanitizeAvatar(r.profiles.avatar) : null,
       })),
     );
   }, []);
@@ -115,7 +118,7 @@ export default function Sala() {
   if (!session.nickname)
     return (
       <Centro>
-        <Apodo onSave={saveNickname} />
+        <PerfilEditor onSave={saveProfile} />
       </Centro>
     );
   if (notFound)
@@ -184,7 +187,10 @@ export default function Sala() {
                     <li key={seat}>
                       {p ? (
                         <div className="flex items-center justify-between rounded-xl bg-pano-claro/70 px-4 py-2.5">
-                          <span className="font-semibold">{p.nickname}</span>
+                          <span className="flex items-center gap-2.5 font-semibold">
+                            <Avatar avatar={p.avatar} size={36} />
+                            {p.nickname}
+                          </span>
                           <span className="text-sm text-claro/70">
                             {p.user_id === session.userId ? 'vos' : ''}
                             {p.user_id === room.host ? (p.user_id === session.userId ? ', armó la mesa' : 'armó la mesa') : ''}
@@ -286,5 +292,5 @@ export default function Sala() {
 }
 
 function Centro({ children }: { children: React.ReactNode }) {
-  return <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">{children}</main>;
+  return <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-4 py-10">{children}</main>;
 }

@@ -1,13 +1,16 @@
 'use client';
 import { useMemo } from 'react';
 import type { Action, GameEvent, PlayerView, Team } from '@/engine/engine.ts';
+import { Avatar } from './Avatar';
 import { Carta, Dorso } from './Carta';
+import type { AvatarConfig } from '@/lib/avatar';
 import { actionLabel, callText, eventText, pendingText } from '@/lib/labels';
 
 export interface Jugador {
   seat: number;
   user_id: string;
   nickname: string;
+  avatar?: AvatarConfig | null;
 }
 
 interface Props {
@@ -69,6 +72,7 @@ export function Mesa({ view, players, busy, onAction }: Props) {
   const h = view.hand;
   const n = view.config.players;
   const nameOf = (seat: number) => players.find((p) => p.seat === seat)?.nickname ?? `Asiento ${seat + 1}`;
+  const avatarOf = (seat: number) => players.find((p) => p.seat === seat)?.avatar ?? null;
   const teamName = (t: Team) => (t === view.team ? 'nosotros' : 'ellos');
 
   const pending = h.pending;
@@ -116,6 +120,9 @@ export function Mesa({ view, players, busy, onAction }: Props) {
     .slice(-5) as string[];
 
   const seats = Array.from({ length: n }, (_, i) => i);
+  const lastEvent = h.events[h.events.length - 1];
+  const shouting = (seat: number) =>
+    (pending?.seat === seat) || (lastEvent?.t === 'call' && lastEvent.seat === seat) || (lastEvent?.t === 'mazo' && lastEvent.seat === seat);
   const isTurn = (seat: number) => !pending && h.turn === seat && view.winner === null;
 
   return (
@@ -176,28 +183,40 @@ export function Mesa({ view, players, busy, onAction }: Props) {
             return (
               <div
                 key={`seat-${seat}`}
-                className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5"
+                className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 ${n === 6 ? 'flex-col' : 'flex-row'}`}
                 style={{ left: `${g.outer.left}%`, top: `${g.outer.top}%` }}
               >
-                <div className="flex gap-0.5" aria-label={`${h.cardsLeft[seat]} cartas en la mano`}>
-                  {Array.from({ length: h.cardsLeft[seat] }, (_, i) => (
-                    <Dorso key={i} size="xs" />
-                  ))}
+                <div className="relative shrink-0">
+                  <Avatar
+                    avatar={avatarOf(seat)}
+                    size={n === 6 ? 38 : 48}
+                    shouting={shouting(seat)}
+                    className={`rounded-full ${isTurn(seat) ? 'ring-[3px] ring-oro' : partner ? 'ring-2 ring-claro/60' : ''}`}
+                  />
+                  <div className="absolute -bottom-1 -right-2 flex" aria-label={`${h.cardsLeft[seat]} cartas en la mano`}>
+                    {Array.from({ length: h.cardsLeft[seat] }, (_, i) => (
+                      <span key={i} className={i > 0 ? '-ml-1.5' : ''} style={{ transform: `rotate(${(i - 1) * 12}deg)` }}>
+                        <Dorso size="xs" />
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div
-                  className={`max-w-[7.5rem] truncate rounded-full px-2 py-0.5 text-xs sm:text-sm ${
-                    isTurn(seat) ? 'bg-oro font-semibold text-tinta' : partner ? 'bg-pano-claro ring-1 ring-claro/50' : 'bg-tinta/75'
-                  }`}
-                  title={partner ? 'Compañero' : 'Rival'}
-                >
-                  <span className="font-semibold">{nameOf(seat)}</span>
-                  {h.mano === seat && <span className="opacity-80"> · mano</span>}
+                <div className={`flex flex-col gap-0.5 ${n === 6 ? 'items-center' : 'items-start'}`}>
+                  <div
+                    className={`max-w-[7.5rem] truncate rounded-full px-2 py-0.5 text-xs sm:text-sm ${
+                      isTurn(seat) ? 'bg-oro font-semibold text-tinta' : partner ? 'bg-pano-claro ring-1 ring-claro/50' : 'bg-tinta/75'
+                    }`}
+                    title={partner ? 'Compañero' : 'Rival'}
+                  >
+                    <span className="font-semibold">{nameOf(seat)}</span>
+                    {h.mano === seat && <span className="opacity-80"> · mano</span>}
+                  </div>
+                  {bubbles[seat] && (
+                    <span key={bubbles[seat]} className="canto whitespace-nowrap rounded-xl bg-claro px-2 py-0.5 font-mano text-sm font-bold text-tinta sm:text-base">
+                      {bubbles[seat]}
+                    </span>
+                  )}
                 </div>
-                {bubbles[seat] && (
-                  <span key={bubbles[seat]} className="canto whitespace-nowrap rounded-xl bg-claro px-2 py-0.5 font-mano text-sm font-bold text-tinta sm:text-base">
-                    {bubbles[seat]}
-                  </span>
-                )}
               </div>
             );
           })}
@@ -259,6 +278,7 @@ export function Mesa({ view, players, busy, onAction }: Props) {
           ))}
         </div>
         <div className="flex items-center gap-2 text-sm">
+          <Avatar avatar={avatarOf(view.seat)} size={40} shouting={shouting(view.seat)} className={`rounded-full ${isTurn(view.seat) ? 'ring-[3px] ring-oro' : ''}`} />
           <span className={`rounded-full px-2.5 py-0.5 ${isTurn(view.seat) ? 'bg-oro font-semibold text-tinta' : 'bg-pano-osc/70'}`}>
             {isTurn(view.seat) ? 'Te toca' : nameOf(view.seat)}
           </span>
