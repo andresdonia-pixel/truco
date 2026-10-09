@@ -152,7 +152,7 @@ export default function Maquina() {
             <Link href="/como-jugar" className="underline underline-offset-4">Mirá cómo se juega</Link>.
           </p>
           <div className="flex items-center gap-4 rounded-2xl bg-pano-osc/50 p-3">
-            <Avatar avatar={myAvatar ?? BOT_AVATARS[0]} size={56} title="Tu personaje" />
+            <Avatar avatar={myAvatar ?? BOT_AVATARS[0]} size={56} title="Tu personaje" className="shrink-0" />
             <span className="text-2xl font-bold text-claro/60" aria-hidden>vs</span>
             <div className="flex -space-x-3">
               {NAMES[config.players].map((name, seat) =>

@@ -252,7 +252,7 @@ export function Mesa({ view, players, busy, onAction, onZumbido, zumbidoListo = 
                     ))}
                   </div>
                 </div>
-                <div className={`flex flex-col gap-0.5 ${n === 6 ? 'items-center' : 'items-start'}`}>
+                <div className={`flex flex-col gap-0.5 ${n === 6 ? 'mt-1 items-center' : 'ml-4 items-start'}`}>
                   <div
                     className={`max-w-[7.5rem] truncate rounded-full px-2 py-0.5 text-xs sm:text-sm ${
                       isTurn(seat) ? 'bg-oro font-semibold text-tinta' : partner ? 'bg-pano-claro ring-1 ring-claro/50' : 'bg-tinta/75'
