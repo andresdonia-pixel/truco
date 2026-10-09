@@ -4,7 +4,7 @@ import { HttpError, handle, requireUser } from '@/lib/server/http';
 export const POST = handle(async (req: Request) => {
   const uid = await requireUser(req);
   const body = await req.json().catch(() => ({}));
-  const players = body.players === 4 ? 4 : 2;
+  const players = body.players === 4 || body.players === 6 ? body.players : 2;
   const target = body.target === 15 ? 15 : 30;
   const flor = Boolean(body.flor);
   const db = admin();

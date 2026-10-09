@@ -8,7 +8,7 @@ export interface Room {
   id: string;
   code: string;
   host: string;
-  players: 2 | 4;
+  players: 2 | 4 | 6;
   target: 15 | 30;
   flor: boolean;
   status: 'waiting' | 'playing' | 'finished' | 'abandoned';

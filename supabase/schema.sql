@@ -19,7 +19,7 @@ create table public.rooms (
   id uuid primary key default gen_random_uuid(),
   code text not null unique default upper(substr(encode(gen_random_bytes(4), 'hex'), 1, 6)),
   host uuid not null references public.profiles (id),
-  players smallint not null check (players in (2, 4)),
+  players smallint not null check (players in (2, 4, 6)),
   target smallint not null check (target in (15, 30)),
   flor boolean not null default false,
   status text not null default 'waiting' check (status in ('waiting', 'playing', 'finished', 'abandoned')),
@@ -28,7 +28,7 @@ create table public.rooms (
 
 create table public.room_players (
   room_id uuid not null references public.rooms (id) on delete cascade,
-  seat smallint not null check (seat between 0 and 3),
+  seat smallint not null check (seat between 0 and 5),
   user_id uuid not null references public.profiles (id),
   team smallint generated always as (seat % 2) stored,
   joined_at timestamptz not null default now(),

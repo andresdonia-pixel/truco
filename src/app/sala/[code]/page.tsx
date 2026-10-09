@@ -14,11 +14,13 @@ interface Room {
   id: string;
   code: string;
   host: string;
-  players: 2 | 4;
+  players: 2 | 4 | 6;
   target: 15 | 30;
   flor: boolean;
   status: 'waiting' | 'playing' | 'finished' | 'abandoned';
 }
+
+const FORMATO = { 2: 'Mano a mano', 4: 'Dos contra dos', 6: 'Tres contra tres' } as const;
 
 export default function Sala() {
   const { code: rawCode } = useParams<{ code: string }>();
@@ -146,7 +148,7 @@ export default function Sala() {
       <Link href="/" className="font-mano text-3xl font-bold">Truco</Link>
       <div className="flex items-center gap-2 text-sm">
         <span className="rounded-full bg-pano-osc/70 px-3 py-1">
-          {room.players === 2 ? 'Mano a mano' : 'Dos contra dos'}, a {room.target}
+          {FORMATO[room.players]}, a {room.target}
           {room.flor ? ', con flor' : ''}
         </span>
         <span className="rounded-full bg-pano-osc/70 px-3 py-1 font-mano text-base tracking-widest">{room.code}</span>
@@ -171,10 +173,10 @@ export default function Sala() {
           </div>
         </section>
 
-        <section className={`grid gap-4 ${room.players === 4 ? 'sm:grid-cols-2' : 'sm:grid-cols-2'}`}>
+        <section className="grid gap-4 sm:grid-cols-2">
           {[0, 1].map((team) => (
             <div key={team} className="rounded-3xl bg-pano-osc/60 p-5">
-              <h2 className="mb-3 text-xl font-bold">{room.players === 4 ? `Equipo ${team + 1}` : `Jugador ${team + 1}`}</h2>
+              <h2 className="mb-3 text-xl font-bold">{room.players > 2 ? `Equipo ${team + 1}` : `Jugador ${team + 1}`}</h2>
               <ul className="flex flex-col gap-2">
                 {seatsOf(team).map((seat) => {
                   const p = players.find((x) => x.seat === seat);
@@ -224,7 +226,7 @@ export default function Sala() {
           {isHost && !full && <p className="text-claro/70">Faltan {room.players - players.length} para repartir.</p>}
         </div>
         {msg && <p className="text-[#ffb4a8]">{msg}</p>}
-        {me && <Chat roomId={room.id} userId={session.userId} myTeam={me.seat % 2} teamChat={room.players === 4} players={players} />}
+        {me && <Chat roomId={room.id} userId={session.userId} myTeam={me.seat % 2} teamChat={room.players > 2} players={players} />}
       </main>
     );
   }
@@ -276,7 +278,7 @@ export default function Sala() {
       </section>
 
       <aside className="order-3">
-        <Chat roomId={room.id} userId={session.userId} myTeam={me.seat % 2} teamChat={room.players === 4} players={players} />
+        <Chat roomId={room.id} userId={session.userId} myTeam={me.seat % 2} teamChat={room.players > 2} players={players} />
       </aside>
       <span className="sr-only">{teamNames.join(' contra ')}</span>
     </main>

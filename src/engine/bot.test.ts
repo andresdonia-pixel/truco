@@ -64,3 +64,8 @@ test('un bot más agresivo no le gana siempre al azar: el juego es parejo entre 
   const w = botVsBot({ players: 2, target: 15, flor: false }, 200);
   assert.ok(w[0] > 40 && w[1] > 40, `muy desparejo: ${w}`);
 });
+
+test('bot vs bot 3v3 con flor', () => {
+  const w = botVsBot({ players: 6, target: 30, flor: true }, 150);
+  assert.equal(w[0] + w[1], 150);
+});

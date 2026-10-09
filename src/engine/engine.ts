@@ -2,7 +2,8 @@
 // Corre en el servidor; los clientes sólo reciben viewFor(estado, asiento), que oculta las cartas ajenas.
 //
 // Reglas implementadas (decisiones documentadas en README):
-// - 1v1 y 2v2 (asientos alternados: 0 y 2 = equipo 0, 1 y 3 = equipo 1). La mano rota cada ronda.
+// - 1v1, 2v2 y 3v3 (asientos alternados: pares = equipo 0, impares = equipo 1). La mano rota cada ronda.
+//   En el de a 6 el envido es por equipo, como en el de a 4 (sin pica-pica).
 // - Bazas con pardas; tras una parda vuelve a salir quien abrió esa baza.
 // - Truco / retruco / vale cuatro; sólo puede subir el equipo que tiene "el quiero".
 // - Envido / envido / real envido / falta envido, con "el envido está primero" ante un truco.
@@ -18,7 +19,7 @@ export type Team = 0 | 1;
 export type EnvidoCall = 'envido' | 'real' | 'falta';
 
 export interface Config {
-  players: 2 | 4;
+  players: 2 | 4 | 6;
   target: 15 | 30;
   flor: boolean;
 }

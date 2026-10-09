@@ -248,3 +248,34 @@ test('simulación: 600 partidas 2v2 sin flor a 15', () => {
 test('simulación: 400 partidas 2v2 con flor a 30', () => {
   assert.ok(simulate({ players: 4, target: 30, flor: true }, 400) > 400);
 });
+
+test('3v3: pares contra impares, gana la baza el equipo de la carta más alta', () => {
+  const C3v3: Config = { players: 6, target: 30, flor: false };
+  let s = createGame(C3v3, 1, {
+    hands: [['4c', '4o', '5c'], ['3e', '5o', '6c'], ['6o', '7c', '10c'], ['2e', '11c', '12c'], ['1e', '10o', '11o'], ['5b', '6b', '10b']],
+  });
+  for (const [seat, card] of [[0, '4c'], [1, '3e'], [2, '6o'], [3, '2e'], [4, '1e'], [5, '5b']] as const) s = act(s, seat, play(card));
+  assert.equal(s.hand.bazas[0].winner, 0);
+  assert.equal(s.hand.bazas[0].winnerSeat, 4);
+  assert.equal(s.hand.turn, 4);
+  // un truco de un equipo lo puede responder cualquiera de los tres rivales
+  s = act(s, 4, { type: 'truco' });
+  for (const seat of [1, 3, 5]) assert.ok(legalActions(s, seat).some((a) => a.type === 'quiero'));
+  for (const seat of [0, 2, 4]) assert.deepEqual(legalActions(s, seat), []);
+});
+
+test('3v3: envido entre seis, gana el más alto y empata el más cercano a la mano', () => {
+  let s = createGame({ players: 6, target: 30, flor: false }, 1, {
+    hands: [['4c', '4o', '5b'], ['7o', '6o', '1e'], ['6c', '5c', '10e'], ['7c', '6e', '1b'], ['4e', '5e', '12b'], ['7b', '6b', '2o']],
+  });
+  // seat 1 (equipo 1) tiene 33; seats 3 y 5 tienen 7 y 33 respectivamente → gana el 1 por cercanía a la mano
+  s = act(s, 0, { type: 'envido', call: 'envido' });
+  s = act(s, 1, { type: 'quiero' });
+  assert.deepEqual(s.score, [0, 2]);
+  const tanto = s.hand.events.find((e) => e.t === 'tanto');
+  assert.deepEqual(tanto, { t: 'tanto', kind: 'envido', seat: 1, value: 33 });
+});
+
+test('simulación: 300 partidas 3v3 con flor a 30', () => {
+  assert.ok(simulate({ players: 6, target: 30, flor: true }, 300) > 300);
+});

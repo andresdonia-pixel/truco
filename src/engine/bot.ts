@@ -43,7 +43,7 @@ export function trucoStrength(v: PlayerView): number {
   const oppBest = Math.max(0, ...current.plays.filter((x) => x.seat % 2 !== team).map((x) => rank(x.card)));
   if (oppBest && (ranks[0] ?? 0) < oppBest) p -= 0.15;
 
-  if (v.config.players === 4) p += 0.06; // el compañero también juega
+  if (v.config.players > 2) p += 0.03 * (v.config.players / 2); // los compañeros también juegan
   return Math.max(0, Math.min(1, p));
 }
 

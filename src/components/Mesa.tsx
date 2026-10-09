@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import type { Action, PlayerView, Team } from '@/engine/engine.ts';
+import type { Action, GameEvent, PlayerView, Team } from '@/engine/engine.ts';
 import { Carta, Dorso } from './Carta';
 import { actionLabel, callText, eventText, pendingText } from '@/lib/labels';
 
@@ -17,15 +17,38 @@ interface Props {
   onAction: (a: Action) => void;
 }
 
-type Pos = 'abajo' | 'derecha' | 'arriba' | 'izquierda';
+interface TableBaza {
+  plays: { seat: number; card: string }[];
+  winnerSeat: number | null;
+}
 
-function positions(n: number, mySeat: number): Record<number, Pos> {
-  const out: Record<number, Pos> = {};
-  for (let s = 0; s < n; s++) {
-    const rel = (s - mySeat + n) % n;
-    out[s] = n === 2 ? (rel === 0 ? 'abajo' : 'arriba') : (['abajo', 'derecha', 'arriba', 'izquierda'] as Pos[])[rel];
+/** Bazas de una mano terminada, a partir de sus eventos. */
+function bazasFromEvents(events: GameEvent[]): TableBaza[] {
+  const out: TableBaza[] = [{ plays: [], winnerSeat: null }];
+  for (const e of events) {
+    if (e.t === 'play') out[out.length - 1].plays.push({ seat: e.seat, card: e.card });
+    if (e.t === 'baza') {
+      out[out.length - 1].winnerSeat = e.seat;
+      out.push({ plays: [], winnerSeat: null });
+    }
   }
-  return out;
+  return out.filter((b) => b.plays.length > 0);
+}
+
+/**
+ * Posición de cada asiento alrededor de la mesa, en % del contenedor.
+ * Vos abajo; el siguiente en jugar (tu derecha) a la derecha, y así en sentido antihorario.
+ */
+function seatGeometry(n: number, mySeat: number, seat: number) {
+  const rel = (seat - mySeat + n) % n;
+  const angle = ((90 - (rel * 360) / n) * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return {
+    rel,
+    outer: { left: 50 + 41 * cos, top: 50 + 40 * sin },
+    inner: { left: 50 + 24 * cos, top: 50 + 21 * sin },
+  };
 }
 
 const BUTTON: Record<string, string> = {
@@ -40,20 +63,32 @@ const BUTTON: Record<string, string> = {
   mazo: 'border-2 border-claro/50 text-claro',
 };
 
+const BAZA_NAME = ['Primera', 'Segunda', 'Tercera'];
+
 export function Mesa({ view, players, busy, onAction }: Props) {
   const h = view.hand;
   const n = view.config.players;
-  const pos = useMemo(() => positions(n, view.seat), [n, view.seat]);
   const nameOf = (seat: number) => players.find((p) => p.seat === seat)?.nickname ?? `Asiento ${seat + 1}`;
   const teamName = (t: Team) => (t === view.team ? 'nosotros' : 'ellos');
 
-  const currentBaza = h.bazas[h.bazas.length - 1];
-  const pastBazas = h.bazas.slice(0, -1);
+  const pending = h.pending;
   const playable = new Set(view.legal.filter((a) => a.type === 'play').map((a) => (a as { card: string }).card));
   const others = view.legal.filter((a) => a.type !== 'play');
-  const pending = h.pending;
   const myTurnToAnswer = pending && pending.by !== view.team && others.length > 0;
   const waitingAnswer = pending && pending.by === view.team;
+
+  // en la mesa: las bazas de esta mano; si todavía no se jugó nada, cómo quedó la anterior
+  const anyPlayed = h.bazas.some((b) => b.plays.length > 0);
+  const showingPrevious = !anyPlayed && !!view.lastHand && view.lastHand.events.some((e) => e.t === 'play');
+  const tableBazas: TableBaza[] = useMemo(
+    () => (showingPrevious ? bazasFromEvents(view.lastHand!.events) : h.bazas.map((b) => ({ plays: b.plays, winnerSeat: b.winnerSeat }))),
+    [showingPrevious, view.lastHand, h.bazas],
+  );
+  const lastPlayKey = useMemo(() => {
+    const plays = h.bazas.flatMap((b) => b.plays);
+    const last = plays[plays.length - 1];
+    return last ? `${last.seat}-${last.card}` : null;
+  }, [h.bazas]);
 
   // último canto de cada jugador en esta mano, como globito
   const bubbles = useMemo(() => {
@@ -68,11 +103,6 @@ export function Mesa({ view, players, busy, onAction }: Props) {
     return out;
   }, [h.events]);
 
-  const log = h.events
-    .map((e) => eventText(e, nameOf, teamName))
-    .filter(Boolean)
-    .slice(-5) as string[];
-
   const lastHandPoints = useMemo(() => {
     if (!view.lastHand) return null;
     const pts: [number, number] = [0, 0];
@@ -80,93 +110,125 @@ export function Mesa({ view, players, busy, onAction }: Props) {
     return pts;
   }, [view.lastHand]);
 
-  const seatBadge = (seat: number) => {
-    const isTurn = !pending && h.turn === seat && view.winner === null;
-    const partner = seat !== view.seat && seat % 2 === view.team;
-    return (
-      <div className="flex flex-col items-center gap-1">
-        <div className="flex gap-1" aria-label={`${h.cardsLeft[seat]} cartas en la mano`}>
-          {Array.from({ length: h.cardsLeft[seat] }, (_, i) => (
-            <Dorso key={i} />
-          ))}
-        </div>
-        <div
-          className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm ${
-            isTurn ? 'bg-oro text-tinta' : partner ? 'bg-pano-claro' : 'bg-pano-osc/70'
-          }`}
-        >
-          <span className="font-semibold">{nameOf(seat)}</span>
-          {partner && <span className="text-xs opacity-80">(compañero)</span>}
-          {h.mano === seat && <span className="text-xs opacity-80">es mano</span>}
-        </div>
-        {bubbles[seat] && (
-          <span key={bubbles[seat]} className="canto rounded-xl bg-claro px-2.5 py-1 font-mano text-base font-bold text-tinta">
-            {bubbles[seat]}
-          </span>
-        )}
-      </div>
-    );
-  };
+  const log = h.events
+    .map((e) => eventText(e, nameOf, teamName))
+    .filter(Boolean)
+    .slice(-5) as string[];
 
-  const playAt = (p: Pos) => {
-    const play = currentBaza.plays.find((x) => pos[x.seat] === p);
-    return (
-      <div className="flex h-[70px] w-12 items-center justify-center">
-        {play && (
-          <span className="carta-entra">
-            <Carta
-              id={play.card}
-              size="sm"
-              highlight={currentBaza.winnerSeat === play.seat}
-            />
-          </span>
-        )}
-      </div>
-    );
-  };
-
-  const seatAt = (p: Pos) => Object.keys(pos).map(Number).find((s) => pos[s] === p);
-  const top = seatAt('arriba');
-  const left = seatAt('izquierda');
-  const right = seatAt('derecha');
+  const seats = Array.from({ length: n }, (_, i) => i);
+  const isTurn = (seat: number) => !pending && h.turn === seat && view.winner === null;
 
   return (
     <div className="flex flex-col gap-3">
-      {/* rivales y compañero */}
-      <div className="flex justify-center">{top !== undefined && seatBadge(top)}</div>
+      {/* la mesa */}
+      <div
+        className={`relative mx-auto w-full max-w-3xl ${n === 6 ? 'aspect-[4/5] sm:aspect-[16/11]' : 'aspect-square sm:aspect-[16/10]'}`}
+        aria-label="Mesa"
+      >
+        <div
+          className="absolute inset-[9%] rounded-[50%] border-[6px] border-madera/80 bg-pano-osc/35 shadow-[inset_0_0_40px_rgba(0,0,0,.35)]"
+          aria-hidden
+        />
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="flex justify-start">{left !== undefined && seatBadge(left)}</div>
-
-        {/* paño central: la baza en juego */}
-        <div className="grid grid-cols-3 grid-rows-3 place-items-center rounded-[40px] border-4 border-madera/80 bg-pano-osc/40 px-3 py-2 shadow-inner">
-          <div />
-          {playAt('arriba')}
-          <div />
-          {playAt('izquierda')}
-          <div className="text-center text-xs leading-tight text-claro/70">
-            {h.trucoValue > 1 ? <span className="font-semibold text-oro">Vale {h.trucoValue}</span> : `Mano ${h.number}`}
-          </div>
-          {playAt('derecha')}
-          <div />
-          {playAt('abajo')}
-          <div />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-xs leading-tight text-claro/70">
+          {showingPrevious ? (
+            <span>Así quedó la mano {view.lastHand!.number}</span>
+          ) : h.trucoValue > 1 ? (
+            <span className="text-sm font-semibold text-oro">Vale {h.trucoValue}</span>
+          ) : (
+            <span>Mano {h.number}</span>
+          )}
         </div>
 
-        <div className="flex justify-end">{right !== undefined && seatBadge(right)}</div>
+        {/* cartas jugadas, delante de cada uno */}
+        {seats.map((seat) => {
+          const g = seatGeometry(n, view.seat, seat);
+          const cards = tableBazas.map((b, i) => ({ i, play: b.plays.find((p) => p.seat === seat), won: b.winnerSeat === seat }));
+          const played = cards.filter((c) => c.play);
+          if (!played.length) return null;
+          return (
+            <ol
+              key={`cards-${seat}`}
+              className={`absolute flex -translate-x-1/2 -translate-y-1/2 ${showingPrevious ? 'opacity-60' : ''}`}
+              style={{ left: `${g.inner.left}%`, top: `${g.inner.top}%` }}
+              aria-label={`Cartas jugadas por ${nameOf(seat)}`}
+            >
+              {played.map(({ i, play, won }, k) => (
+                <li
+                  key={`${i}-${play!.card}`}
+                  className={`${k > 0 ? '-ml-3 sm:-ml-4' : ''} ${!showingPrevious && `${seat}-${play!.card}` === lastPlayKey ? 'carta-entra' : ''}`}
+                  style={{ transform: `rotate(${(k - (played.length - 1) / 2) * 7}deg)` }}
+                  title={`${BAZA_NAME[i]}${won ? ', la ganó' : ''}`}
+                >
+                  <Carta id={play!.card} size="mesa" highlight={won} />
+                </li>
+              ))}
+            </ol>
+          );
+        })}
+
+        {/* los demás jugadores */}
+        {seats
+          .filter((seat) => seat !== view.seat)
+          .map((seat) => {
+            const g = seatGeometry(n, view.seat, seat);
+            const partner = seat % 2 === view.team;
+            return (
+              <div
+                key={`seat-${seat}`}
+                className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5"
+                style={{ left: `${g.outer.left}%`, top: `${g.outer.top}%` }}
+              >
+                <div className="flex gap-0.5" aria-label={`${h.cardsLeft[seat]} cartas en la mano`}>
+                  {Array.from({ length: h.cardsLeft[seat] }, (_, i) => (
+                    <Dorso key={i} size="xs" />
+                  ))}
+                </div>
+                <div
+                  className={`max-w-[7.5rem] truncate rounded-full px-2 py-0.5 text-xs sm:text-sm ${
+                    isTurn(seat) ? 'bg-oro font-semibold text-tinta' : partner ? 'bg-pano-claro ring-1 ring-claro/50' : 'bg-tinta/75'
+                  }`}
+                  title={partner ? 'Compañero' : 'Rival'}
+                >
+                  <span className="font-semibold">{nameOf(seat)}</span>
+                  {h.mano === seat && <span className="opacity-80"> · mano</span>}
+                </div>
+                {bubbles[seat] && (
+                  <span key={bubbles[seat]} className="canto whitespace-nowrap rounded-xl bg-claro px-2 py-0.5 font-mano text-sm font-bold text-tinta sm:text-base">
+                    {bubbles[seat]}
+                  </span>
+                )}
+              </div>
+            );
+          })}
       </div>
 
-      {/* bazas ya jugadas */}
-      <ol className="flex flex-wrap justify-center gap-2 text-sm" aria-label="Bazas jugadas">
-        {pastBazas.map((b, i) => (
-          <li key={i} className="rounded-full bg-pano-osc/70 px-3 py-1">
-            {['Primera', 'Segunda'][i]}:{' '}
-            <strong className={b.winner === view.team ? 'text-oro' : ''}>
-              {b.winner === 'parda' ? 'parda' : b.winner === view.team ? 'nuestra' : 'de ellos'}
-            </strong>
-          </li>
-        ))}
-      </ol>
+      {n > 2 && (
+        <p className="-mt-1 text-center text-xs text-claro/60">
+          Compañeros en verde y rivales en negro, sentados alternados como en la mesa.
+        </p>
+      )}
+
+      {/* bazas ya resueltas */}
+      {!showingPrevious && (
+        <ol className="flex flex-wrap justify-center gap-2 text-sm" aria-label="Bazas jugadas">
+          {h.bazas
+            .filter((b) => b.winner !== null)
+            .map((b, i) => (
+              <li key={i} className="rounded-full bg-pano-osc/70 px-3 py-1">
+                {BAZA_NAME[i]}:{' '}
+                <strong className={b.winner === view.team ? 'text-oro' : ''}>
+                  {b.winner === 'parda' ? 'parda' : b.winner === view.team ? 'nuestra' : 'de ellos'}
+                </strong>
+              </li>
+            ))}
+        </ol>
+      )}
+      {showingPrevious && lastHandPoints && (
+        <p className="text-center text-sm text-claro">
+          Mano anterior: {lastHandPoints[view.team]} para nosotros, {lastHandPoints[1 - view.team]} para ellos.
+        </p>
+      )}
 
       {/* canto pendiente */}
       {myTurnToAnswer && (
@@ -197,8 +259,8 @@ export function Mesa({ view, players, busy, onAction }: Props) {
           ))}
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className={`rounded-full px-2.5 py-0.5 ${!pending && h.turn === view.seat ? 'bg-oro text-tinta font-semibold' : 'bg-pano-osc/70'}`}>
-            {!pending && h.turn === view.seat && view.winner === null ? 'Te toca' : nameOf(view.seat)}
+          <span className={`rounded-full px-2.5 py-0.5 ${isTurn(view.seat) ? 'bg-oro font-semibold text-tinta' : 'bg-pano-osc/70'}`}>
+            {isTurn(view.seat) ? 'Te toca' : nameOf(view.seat)}
           </span>
           {h.mano === view.seat && <span className="text-xs text-claro/80">sos mano</span>}
           {bubbles[view.seat] && (
@@ -229,18 +291,11 @@ export function Mesa({ view, players, busy, onAction }: Props) {
       )}
 
       {/* lo que va pasando */}
-      <div className="mx-auto w-full max-w-md text-sm text-claro/80" aria-live="polite">
-        {lastHandPoints && h.events.length <= 2 && (
-          <p className="mb-1 text-claro">
-            Mano anterior: {lastHandPoints[view.team]} para nosotros, {lastHandPoints[1 - view.team]} para ellos.
-          </p>
-        )}
-        <ul className="space-y-0.5">
-          {log.map((t, i) => (
-            <li key={`${h.number}-${h.events.length}-${i}`}>{t}</li>
-          ))}
-        </ul>
-      </div>
+      <ul className="mx-auto w-full max-w-md space-y-0.5 text-sm text-claro/80" aria-live="polite">
+        {log.map((t, i) => (
+          <li key={`${h.number}-${h.events.length}-${i}`}>{t}</li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -16,7 +16,7 @@ interface Stats {
 export default function Home() {
   const { session, error, saveNickname } = useSession();
   const router = useRouter();
-  const [players, setPlayers] = useState<2 | 4>(2);
+  const [players, setPlayers] = useState<2 | 4 | 6>(2);
   const [target, setTarget] = useState<15 | 30>(30);
   const [flor, setFlor] = useState(false);
   const [code, setCode] = useState('');
@@ -106,9 +106,10 @@ export default function Home() {
               <h2 className="text-2xl font-bold">Armar una mesa</h2>
               <fieldset className="flex flex-col gap-2">
                 <legend className="mb-2 text-claro/80">Jugadores</legend>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button type="button" aria-pressed={players === 2} className={option(players === 2)} onClick={() => setPlayers(2)}>Mano a mano</button>
                   <button type="button" aria-pressed={players === 4} className={option(players === 4)} onClick={() => setPlayers(4)}>Dos contra dos</button>
+                  <button type="button" aria-pressed={players === 6} className={option(players === 6)} onClick={() => setPlayers(6)}>Tres contra tres</button>
                 </div>
               </fieldset>
               <fieldset className="flex flex-col gap-2">

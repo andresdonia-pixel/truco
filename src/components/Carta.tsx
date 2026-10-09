@@ -51,31 +51,37 @@ export function Palo({ suit, size = 40 }: { suit: Suit; size?: number }) {
 
 interface CartaProps {
   id: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'mesa' | 'sm' | 'md' | 'lg';
   onClick?: () => void;
   disabled?: boolean;
   highlight?: boolean;
   dim?: boolean;
 }
 
-const SIZES = { sm: 'w-11 h-[66px]', md: 'w-16 h-24', lg: 'w-[86px] h-[129px] sm:w-24 sm:h-36' };
+const SIZES = {
+  xs: 'w-4 h-6 sm:w-5 sm:h-[30px]',
+  mesa: 'w-9 h-[54px] sm:w-12 sm:h-[72px]',
+  sm: 'w-11 h-[66px]',
+  md: 'w-16 h-24',
+  lg: 'w-[86px] h-[129px] sm:w-24 sm:h-36',
+};
 
 export function Carta({ id, size = 'md', onClick, disabled, highlight, dim }: CartaProps) {
   const { n, s } = parseCard(id);
   const label = `${n} de ${SUIT_LABEL[s]}${FIGURE[n] ? ` (${FIGURE[n]})` : ''}`;
   const color = SUIT_COLOR[s];
-  const big = size !== 'sm';
+  const big = size !== 'sm' && size !== 'mesa';
   const body = (
     <span
-      className={`relative flex ${SIZES[size]} flex-col justify-between rounded-[10px] border bg-hueso p-1.5 text-tinta shadow-[0_3px_0_rgba(0,0,0,.35)] ${
+      className={`relative flex ${SIZES[size]} flex-col justify-between rounded-[10px] border bg-hueso ${size === 'mesa' ? 'p-1' : 'p-1.5'} text-tinta shadow-[0_3px_0_rgba(0,0,0,.35)] ${
         highlight ? 'border-oro ring-2 ring-oro' : 'border-[#cfc4a8]'
       } ${dim ? 'opacity-55' : ''}`}
     >
-      <span className="text-left text-sm font-bold leading-none sm:text-base" style={{ color }}>
+      <span className={`text-left font-bold leading-none ${size === 'mesa' ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'}`} style={{ color }}>
         {n}
       </span>
       <span className="flex justify-center">
-        <Palo suit={s} size={size === 'lg' ? 46 : size === 'md' ? 34 : 22} />
+        <Palo suit={s} size={size === 'lg' ? 46 : size === 'md' ? 34 : size === 'sm' ? 22 : 20} />
       </span>
       {big && (
         <span className="rotate-180 text-left text-sm font-bold leading-none sm:text-base" style={{ color }}>
@@ -98,15 +104,15 @@ export function Carta({ id, size = 'md', onClick, disabled, highlight, dim }: Ca
   );
 }
 
-export function Dorso({ size = 'sm' }: { size?: 'sm' | 'md' }) {
+export function Dorso({ size = 'sm' }: { size?: 'xs' | 'sm' | 'md' }) {
   return (
     <span
       aria-hidden
-      className={`inline-block ${SIZES[size]} rounded-[10px] border border-[#3b1f12] shadow-[0_3px_0_rgba(0,0,0,.35)]`}
+      className={`inline-block ${SIZES[size]} ${size === 'xs' ? 'rounded-[3px]' : 'rounded-[10px]'} border border-[#3b1f12]`}
       style={{
         background:
           'repeating-linear-gradient(45deg, #7a2a22 0 6px, #8f352b 6px 12px), #7a2a22',
-        boxShadow: 'inset 0 0 0 3px #f6f1e4, 0 3px 0 rgba(0,0,0,.35)',
+        boxShadow: size === 'xs' ? 'inset 0 0 0 1.5px #f6f1e4' : 'inset 0 0 0 3px #f6f1e4, 0 3px 0 rgba(0,0,0,.35)',
       }}
     />
   );

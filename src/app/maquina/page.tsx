@@ -10,10 +10,13 @@ import { Anotador } from '@/components/Anotador';
 import { Mesa, type Jugador } from '@/components/Mesa';
 
 const HUMAN = 0;
-const NAMES: Record<2 | 4, string[]> = {
+// asientos pares = tu equipo, impares = rivales
+const NAMES: Record<2 | 4 | 6, string[]> = {
   2: ['Vos', 'El Mago'],
-  4: ['Vos', 'El Mago', 'Coco', 'La Viuda'], // Coco es tu compañero (asiento 2)
+  4: ['Vos', 'El Mago', 'Coco', 'La Viuda'],
+  6: ['Vos', 'El Mago', 'Coco', 'La Viuda', 'Pepa', 'Tito'],
 };
+const RIVALES = { 2: 'El Mago', 4: 'El Mago y La Viuda', 6: 'El Mago, La Viuda y Tito' } as const;
 
 /** Quién decide ahora. Si un canto lo podemos responder vos o tu compañero, respondés vos. */
 function nextActor(s: GameState): number | null {
@@ -82,8 +85,11 @@ export default function Maquina() {
               <button type="button" aria-pressed={config.players === 4} className={option(config.players === 4)} onClick={() => setConfig({ ...config, players: 4 })}>
                 Dos contra dos
               </button>
+              <button type="button" aria-pressed={config.players === 6} className={option(config.players === 6)} onClick={() => setConfig({ ...config, players: 6 })}>
+                Tres contra tres
+              </button>
             </div>
-            {config.players === 4 && <p className="text-sm text-claro/70">Tu compañero también es la máquina.</p>}
+            {config.players > 2 && <p className="text-sm text-claro/70">Tus compañeros también son la máquina.</p>}
           </fieldset>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-2 text-claro/80">Puntos</legend>
@@ -108,10 +114,10 @@ export default function Maquina() {
   }
 
   const finished = view.winner !== null;
-  const rivals = config.players === 2 ? 'El Mago' : 'El Mago y La Viuda';
+  const rivals = RIVALES[config.players];
 
   return (
-    <main className="mx-auto grid w-full max-w-7xl flex-1 gap-5 px-3 py-4 lg:grid-cols-[230px_1fr_230px] lg:px-6">
+    <main className="mx-auto grid w-full max-w-7xl flex-1 gap-5 px-3 py-4 lg:grid-cols-[200px_1fr_200px] lg:px-6">
       <header className="flex flex-wrap items-center justify-between gap-3 lg:col-span-3">
         <Link href="/" className="font-mano text-3xl font-bold">Truco</Link>
         <span className="rounded-full bg-pano-osc/70 px-3 py-1 text-sm">
