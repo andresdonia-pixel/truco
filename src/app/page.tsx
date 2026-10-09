@@ -62,7 +62,7 @@ export default function Home() {
         <div>
           <h1 className="font-mano text-7xl font-bold leading-none tracking-tight sm:text-8xl">Truco</h1>
           <p className="mt-2 max-w-sm text-lg text-claro/85">
-            Armá una mesa, pasale el link a los tuyos y jugá de a dos o de a cuatro.
+            Armá una mesa, pasale el link a los tuyos y jugá de a dos, de a cuatro o de a seis.
           </p>
         </div>
         <div className="hidden shrink-0 sm:flex" aria-hidden>

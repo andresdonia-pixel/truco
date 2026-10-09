@@ -6,7 +6,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Truco',
-  description: 'Truco argentino online, 1 contra 1 o 2 contra 2, con chat y ranking.',
+  description: 'Truco argentino online, de a 2, 4 o 6, con chat, ranking y contra la máquina.',
 };
 
 export const viewport: Viewport = { themeColor: '#1e4d3a' };
