@@ -146,6 +146,10 @@ export default function Home() {
                 />
                 <button className="rounded-xl bg-oro px-4 py-2.5 text-lg font-bold text-tinta">Entrar a la sala</button>
               </form>
+              <Link href="/maquina" className="rounded-3xl bg-pano-osc/60 p-6 transition hover:bg-pano-osc/80">
+                <span className="block text-2xl font-bold">Contra la máquina</span>
+                <span className="text-claro/75">Practicá sin esperar a nadie.</span>
+              </Link>
               <Link href="/ranking" className="rounded-3xl bg-papel p-6 font-mano text-2xl font-bold text-tinta shadow-[2px_4px_0_rgba(0,0,0,.35)] rotate-[1deg]">
                 Ver el ranking
               </Link>

@@ -59,11 +59,12 @@ const BAZA = ['Primera', 'Segunda', 'Tercera'];
 
 /** Texto de cada evento para el registro de la mesa. `teamName(t)` devuelve "Nosotros"/"Ellos". */
 export function eventText(e: GameEvent, name: (seat: number) => string, teamName: (t: 0 | 1) => string): string | null {
+  const vos = (seat: number) => name(seat) === 'Vos';
   switch (e.t) {
     case 'deal':
       return `Mano ${e.hand}. Reparte y sale ${name(e.mano)}.`;
     case 'play':
-      return `${name(e.seat)} juega el ${cardName(e.card)}.`;
+      return `${name(e.seat)} ${vos(e.seat) ? 'jugás' : 'juega'} el ${cardName(e.card)}.`;
     case 'call':
       return `${name(e.seat)}: ${callText(e.call)}`;
     case 'quiero':
@@ -71,11 +72,11 @@ export function eventText(e: GameEvent, name: (seat: number) => string, teamName
     case 'no_quiero':
       return `${name(e.seat)}: No quiero.`;
     case 'mazo':
-      return `${name(e.seat)} se va al mazo.`;
+      return vos(e.seat) ? 'Te vas al mazo.' : `${name(e.seat)} se va al mazo.`;
     case 'baza':
       return e.winner === 'parda' ? `${BAZA[e.index]}: parda.` : `${BAZA[e.index]} para ${teamName(e.winner)}.`;
     case 'tanto':
-      return `${name(e.seat)} tiene ${e.value} de ${e.kind}.`;
+      return `${name(e.seat)} ${vos(e.seat) ? 'tenés' : 'tiene'} ${e.value} de ${e.kind}.`;
     case 'points':
       return `+${e.pts} para ${teamName(e.team)} (${e.reason}).`;
     case 'hand_end':

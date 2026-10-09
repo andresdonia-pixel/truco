@@ -10,7 +10,8 @@ Truco argentino multijugador (1v1 y 2v2) en tiempo real, con chat general y de e
 - [x] Esquema de base y RLS (`supabase/schema.sql`), validado contra Postgres
 - [x] App Next.js: inicio con apodo, sala con link, mesa, chat general y de equipo, ranking
 - [x] Endpoints del servidor que aplican jugadas (`src/app/api/rooms`)
-- [ ] Proyecto Supabase + deploy en Vercel
+- [x] Proyecto Supabase + deploy en Vercel: https://truco-livid.vercel.app
+- [x] Modo contra la máquina (`/maquina`, bot en `src/engine/bot.ts`), 1v1 y 2v2, corre en el navegador y no suma al ranking
 
 ## Correr local
 
