@@ -38,6 +38,8 @@ export default function Sala() {
   const { session, error: sessionError, saveProfile } = useSession();
   const [room, setRoom] = useState<Room | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [chatAbierto, setChatAbierto] = useState(false);
+  const [sinLeer, setSinLeer] = useState(0);
   const [players, setPlayers] = useState<Jugador[]>([]);
   const [view, setView] = useState<PlayerView | null>(null);
   const [busy, setBusy] = useState(false);
@@ -177,8 +179,8 @@ export default function Sala() {
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-3">
       <Link href="/" className="font-mano text-3xl font-bold">Truco</Link>
-      <div className="flex items-center gap-2 text-sm">
-        <span className="rounded-full bg-pano-osc/70 px-3 py-1">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="whitespace-nowrap rounded-full bg-pano-osc/70 px-3 py-1">
           {FORMATO[room.players]}, a {room.target}
           {room.flor ? ', con flor' : ''}
         </span>
@@ -267,7 +269,11 @@ export default function Sala() {
           {isHost && !full && <p className="text-claro/70">Faltan {room.players - players.length} para repartir.</p>}
         </div>
         {msg && <p className="text-[#ffb4a8]">{msg}</p>}
-        {me && <Chat roomId={room.id} userId={session.userId} myTeam={me.seat % 2} teamChat={room.players > 2} players={players} />}
+        {me && (
+          <div className="h-80">
+            <Chat roomId={room.id} userId={session.userId} myTeam={me.seat % 2} teamChat={room.players > 2} players={players} />
+          </div>
+        )}
       </main>
     );
   }
@@ -324,9 +330,36 @@ export default function Sala() {
         {msg && <p className="text-center text-[#ffb4a8]" role="alert">{msg}</p>}
       </section>
 
-      <aside className="order-3">
-        <Chat roomId={room.id} userId={session.userId} myTeam={me.seat % 2} teamChat={room.players > 2} players={players} />
+      {/* en celular el chat es una hoja que sube desde abajo; queda montado para no perder mensajes */}
+      <aside
+        className={`order-3 lg:static lg:block lg:h-full lg:min-h-[420px] ${
+          chatAbierto ? 'fixed inset-x-0 bottom-0 z-40 h-[65dvh] p-2 pb-[max(.5rem,env(safe-area-inset-bottom))]' : 'hidden'
+        }`}
+      >
+        <Chat
+          roomId={room.id}
+          userId={session.userId}
+          myTeam={me.seat % 2}
+          teamChat={room.players > 2}
+          players={players}
+          onNuevo={() => !chatAbierto && setSinLeer((n) => n + 1)}
+        />
       </aside>
+      {chatAbierto && <button aria-label="Cerrar chat" onClick={() => setChatAbierto(false)} className="fixed inset-0 z-30 bg-black/40 lg:hidden" />}
+      <button
+        type="button"
+        onClick={() => {
+          setChatAbierto((v) => !v);
+          setSinLeer(0);
+        }}
+        aria-label={chatAbierto ? 'Cerrar chat' : 'Abrir chat'}
+        className={`fixed right-4 z-50 flex items-center gap-2 rounded-full bg-oro px-4 py-3 font-bold text-tinta shadow-[0_4px_0_rgba(0,0,0,.35)] lg:hidden ${
+          chatAbierto ? 'top-4' : 'bottom-[max(1rem,env(safe-area-inset-bottom))]'
+        }`}
+      >
+        {chatAbierto ? 'Cerrar' : 'Chat'}
+        {!chatAbierto && sinLeer > 0 && <span className="rounded-full bg-rojo px-2 text-sm text-claro">{sinLeer}</span>}
+      </button>
       <span className="sr-only">{teamNames.join(' contra ')}</span>
     </main>
   );

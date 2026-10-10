@@ -312,3 +312,12 @@ test('estadísticas: una partida guardada sin stats sigue andando', () => {
   assert.equal(t.stats!.teams[0].mazos, 1);
   assert.ok(viewFor(t, 0).stats);
 });
+
+test('acepta jugadas con las claves en otro orden (como vuelven de jsonb)', () => {
+  const s = createGame({ players: 2, target: 30, flor: false }, 7);
+  const seat = s.hand.turn;
+  const desdeLaBase = JSON.parse('{"call":"envido","type":"envido"}') as Action;
+  const t = applyAction(s, seat, desdeLaBase);
+  assert.equal(t.hand.pending?.kind, 'envido');
+  assert.throws(() => applyAction(s, seat, JSON.parse('{"call":"otra","type":"envido"}') as Action), IllegalMove);
+});

@@ -19,9 +19,13 @@ interface Props {
   myTeam: number | null;
   teamChat: boolean;
   players: Jugador[];
+  /** avisa cuando llega un mensaje de otro jugador (para el contador del botón flotante) */
+  onNuevo?: () => void;
 }
 
-export function Chat({ roomId, userId, myTeam, teamChat, players }: Props) {
+export function Chat({ roomId, userId, myTeam, teamChat, players, onNuevo }: Props) {
+  const onNuevoRef = useRef(onNuevo);
+  onNuevoRef.current = onNuevo;
   const [messages, setMessages] = useState<Message[]>([]);
   const [tab, setTab] = useState<'all' | 'team'>('all');
   const [text, setText] = useState('');
@@ -47,6 +51,7 @@ export function Chat({ roomId, userId, myTeam, teamChat, players }: Props) {
         const m = p.new as Message;
         if (esSena(m.body)) return;
         setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev.slice(-150), m]));
+        if (m.user_id !== userId) onNuevoRef.current?.();
         if (m.channel !== tabRef.current) setUnread((u) => ({ ...u, [m.channel]: u[m.channel] + 1 }));
       })
       .subscribe();
@@ -54,7 +59,7 @@ export function Chat({ roomId, userId, myTeam, teamChat, players }: Props) {
       alive = false;
       client.removeChannel(channel);
     };
-  }, [roomId]);
+  }, [roomId, userId]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -78,7 +83,7 @@ export function Chat({ roomId, userId, myTeam, teamChat, players }: Props) {
   const tabs: ['all' | 'team', string][] = teamChat && myTeam !== null ? [['all', 'Mesa'], ['team', 'Equipo']] : [['all', 'Mesa']];
 
   return (
-    <section className="flex h-80 flex-col rounded-2xl bg-pano-osc/70 lg:h-full lg:min-h-[420px]" aria-label="Chat">
+    <section className="flex h-full min-h-0 flex-col rounded-2xl bg-pano-osc/95 lg:bg-pano-osc/70" aria-label="Chat">
       <div className="flex gap-1 border-b border-claro/15 p-1.5" role="tablist">
         {tabs.map(([id, label]) => (
           <button

@@ -223,7 +223,9 @@ export function legalActions(state: GameState, seat: number): Action[] {
   return out;
 }
 
-const sameAction = (a: Action, b: Action) => JSON.stringify(a) === JSON.stringify(b);
+// Se compara campo por campo: las jugadas que vuelven de la base (jsonb) llegan con las claves en otro orden.
+const actionKey = (a: Action) => `${a.type}:${'card' in a ? a.card : 'call' in a ? a.call : ''}`;
+const sameAction = (a: Action, b: Action) => actionKey(a) === actionKey(b);
 
 // ---------- aplicar acción ----------
 
